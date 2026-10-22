@@ -15,9 +15,6 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.nightly.app',
-    config: {
-      googleMapsApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY,
-    },
     infoPlist: {
       NSLocationWhenInUseUsageDescription:
         'NIGHTLY usa tu ubicación para mostrarte las previas y fiestas que están pasando cerca tuyo, dentro de un radio que vos elegís.',
@@ -36,11 +33,6 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    config: {
-      googleMaps: {
-        apiKey: process.env.GOOGLE_MAPS_ANDROID_API_KEY,
-      },
-    },
     permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'CAMERA', 'READ_EXTERNAL_STORAGE'],
   },
   web: {
@@ -49,6 +41,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   },
   plugins: [
     '@react-native-community/datetimepicker',
+    'expo-web-browser',
     'expo-router',
     'expo-font',
     'expo-splash-screen',

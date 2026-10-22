@@ -1,13 +1,12 @@
 import { useState } from 'react';
-import { Dimensions, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { brand } from '@/constants/brand';
 import { colors, radii, spacing, typography } from '@/constants/theme';
-
-const { width } = Dimensions.get('window');
+import { signInWithGoogle } from '@/services/auth';
 
 const SLIDES = [
   {
@@ -29,7 +28,23 @@ const SLIDES = [
 
 export default function WelcomeScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState<string | null>(null);
+
+  const handleGoogle = async () => {
+    setGoogleError(null);
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      // app/_layout.tsx's guard takes it from here once the session lands.
+    } catch (e: any) {
+      setGoogleError('No pudimos conectar con Google. Probá de nuevo.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = Math.round(e.nativeEvent.contentOffset.x / width);
@@ -68,6 +83,19 @@ export default function WelcomeScreen() {
       </View>
 
       <View style={styles.actions}>
+        {googleError ? <Text style={styles.googleError}>{googleError}</Text> : null}
+        <Button
+          label="Continuar con Google"
+          variant="secondary"
+          onPress={handleGoogle}
+          loading={googleLoading}
+          icon={<Ionicons name="logo-google" size={18} color={colors.textPrimary} />}
+        />
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>o</Text>
+          <View style={styles.dividerLine} />
+        </View>
         <Button label="Crear cuenta" onPress={() => router.push('/(auth)/register')} />
         <Button label="Ya tengo cuenta" variant="outline" onPress={() => router.push('/(auth)/login')} />
       </View>
@@ -138,4 +166,8 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingBottom: spacing.md,
   },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.xxs },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { color: colors.textMuted, fontSize: typography.size.xs },
+  googleError: { color: colors.danger, fontSize: typography.size.sm, textAlign: 'center' },
 });

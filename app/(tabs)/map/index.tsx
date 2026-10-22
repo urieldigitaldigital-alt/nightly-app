@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
-import MapView, { PROVIDER_GOOGLE } from '@/components/map/PlatformMap';
+import AppMap from '@/components/map/AppMap';
+import type { MapMarkerSpec } from '@/components/map/AppMap.types';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -8,12 +9,11 @@ import { CategoryChip } from '@/components/ui/CategoryChip';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
-import { MAP_STYLE } from '@/constants/mapStyle';
 import { useLocationStore } from '@/stores/locationStore';
 import { useCategories } from '@/hooks/useCategories';
 import { useEventsFeed } from '@/hooks/useEventsFeed';
 import { clusterEvents, MarkerCluster } from '@/lib/clustering';
-import { EventMarkerPin } from '@/components/map/EventMarker';
+import { radiusKmToZoom } from '@/lib/mapZoom';
 import { formatDistance, formatEventDateTime } from '@/lib/format';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
@@ -28,6 +28,22 @@ export default function MapScreen() {
   const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm, categorySlug, orderBy: 'distance' });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
   const clusters = useMemo(() => clusterEvents(events), [events]);
+  const zoom = useMemo(() => radiusKmToZoom(radiusKm), [radiusKm]);
+  const markers = useMemo<MapMarkerSpec[]>(() => {
+    const clusterMarkers: MapMarkerSpec[] = clusters.map((cluster) => ({
+      id: cluster.key,
+      kind: 'photo',
+      lat: cluster.lat,
+      lng: cluster.lng,
+      photoUrl: cluster.events[0].coverImageUrl,
+      badge: cluster.events.length,
+    }));
+    if (origin.isCurrentLocation) {
+      clusterMarkers.push({ id: 'me', kind: 'dot', lat: origin.lat, lng: origin.lng, color: colors.accent });
+    }
+    return clusterMarkers;
+  }, [clusters, origin]);
+  const clustersByKey = useMemo(() => new Map(clusters.map((c) => [c.key, c])), [clusters]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -53,22 +69,16 @@ export default function MapScreen() {
       </View>
 
       <View style={styles.mapWrapper}>
-        <MapView
-          provider={PROVIDER_GOOGLE}
-          customMapStyle={MAP_STYLE}
+        <AppMap
           style={StyleSheet.absoluteFill}
-          showsUserLocation={origin.isCurrentLocation}
-          initialRegion={{
-            latitude: origin.lat,
-            longitude: origin.lng,
-            latitudeDelta: radiusKm / 55,
-            longitudeDelta: radiusKm / 55,
+          center={{ lat: origin.lat, lng: origin.lng }}
+          zoom={zoom}
+          markers={markers}
+          onMarkerPress={(id) => {
+            const cluster = clustersByKey.get(id);
+            if (cluster) setSelectedCluster(cluster);
           }}
-        >
-          {clusters.map((cluster) => (
-            <EventMarkerPin key={cluster.key} cluster={cluster} onPress={() => setSelectedCluster(cluster)} />
-          ))}
-        </MapView>
+        />
 
         {feed.isLoading && (
           <View style={styles.loadingOverlay}>

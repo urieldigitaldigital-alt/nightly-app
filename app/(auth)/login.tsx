@@ -6,7 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { colors, spacing, typography } from '@/constants/theme';
-import { signIn } from '@/services/auth';
+import { signIn, signInWithGoogle } from '@/services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -14,6 +14,19 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const handleGoogle = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (e: any) {
+      setError('No pudimos conectar con Google. Probá de nuevo.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     setError(null);
@@ -52,6 +65,20 @@ export default function LoginScreen() {
         <Text style={styles.link} onPress={() => router.push('/(auth)/forgot-password')}>
           ¿Olvidaste tu contraseña?
         </Text>
+
+        <View style={styles.divider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>o</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <Button
+          label="Continuar con Google"
+          variant="secondary"
+          onPress={handleGoogle}
+          loading={googleLoading}
+          icon={<Ionicons name="logo-google" size={18} color={colors.textPrimary} />}
+        />
       </View>
     </Screen>
   );
@@ -64,4 +91,7 @@ const styles = StyleSheet.create({
   form: { gap: spacing.md },
   error: { color: colors.danger, fontSize: typography.size.sm },
   link: { color: colors.accent, fontSize: typography.size.sm, textAlign: 'center', marginTop: spacing.sm, fontWeight: typography.weight.medium },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.xxs },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  dividerText: { color: colors.textMuted, fontSize: typography.size.xs },
 });

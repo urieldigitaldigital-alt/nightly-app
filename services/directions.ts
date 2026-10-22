@@ -1,7 +1,3 @@
-const DIRECTIONS_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_DIRECTIONS_API_KEY;
-
-export const isDirectionsApiConfigured = Boolean(DIRECTIONS_API_KEY);
-
 export type DirectionsResult = {
   distanceText: string;
   durationText: string;
@@ -10,35 +6,46 @@ export type DirectionsResult = {
   polyline: string;
 };
 
-/** Real driving directions via Google's Directions API. Returns null (never
- * a fabricated route) when no API key is configured — callers should fall
- * back to handing off to the native maps app instead of drawing a fake line. */
+function formatDistance(meters: number): string {
+  if (meters < 1000) return `${Math.round(meters)} m`;
+  return `${(meters / 1000).toFixed(1)} km`;
+}
+
+function formatDuration(seconds: number): string {
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest ? `${hours} h ${rest} min` : `${hours} h`;
+}
+
+/** Real driving directions via OSRM's free public routing server — no API
+ * key, no billing account. It's a fair-use demo instance (not meant for
+ * heavy production traffic), so if it's ever unreachable we return null and
+ * the caller falls back to handing off to the device's own maps app instead
+ * of drawing a fake route. */
 export async function fetchDrivingDirections(
   originLat: number,
   originLng: number,
   destLat: number,
   destLng: number
 ): Promise<DirectionsResult | null> {
-  if (!DIRECTIONS_API_KEY) return null;
+  const url = `https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=polyline`;
 
-  const url =
-    `https://maps.googleapis.com/maps/api/directions/json` +
-    `?origin=${originLat},${originLng}&destination=${destLat},${destLng}` +
-    `&mode=driving&key=${DIRECTIONS_API_KEY}`;
+  try {
+    const response = await fetch(url);
+    const json = await response.json();
+    if (json.code !== 'Ok' || !json.routes?.[0]) return null;
 
-  const response = await fetch(url);
-  const json = await response.json();
-
-  if (json.status !== 'OK' || !json.routes?.[0]) return null;
-
-  const route = json.routes[0];
-  const leg = route.legs[0];
-
-  return {
-    distanceText: leg.distance.text,
-    durationText: leg.duration.text,
-    distanceMeters: leg.distance.value,
-    durationSeconds: leg.duration.value,
-    polyline: route.overview_polyline.points,
-  };
+    const route = json.routes[0];
+    return {
+      distanceText: formatDistance(route.distance),
+      durationText: formatDuration(route.duration),
+      distanceMeters: route.distance,
+      durationSeconds: route.duration,
+      polyline: route.geometry,
+    };
+  } catch {
+    return null;
+  }
 }

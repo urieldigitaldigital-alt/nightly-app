@@ -2,12 +2,12 @@ import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { Profile } from '@/types/models';
-import { fetchProfile } from '@/services/profiles';
 
 type AuthState = {
   session: Session | null;
   profile: Profile | null;
   onboardingCompleted: boolean;
+  birthdateConfirmed: boolean;
   loading: boolean;
   initialize: () => () => void;
   refreshProfile: () => Promise<void>;
@@ -17,6 +17,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   session: null,
   profile: null,
   onboardingCompleted: false,
+  birthdateConfirmed: true,
   loading: true,
 
   initialize: () => {
@@ -38,17 +39,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     };
   },
 
+  // Reuses applySession rather than services/profiles.ts's fetchProfile,
+  // which returns the public-facing Profile shape (no onboarding/birthdate
+  // gating fields — those are private to the signed-in user, not something
+  // other people's profile views should ever receive).
   refreshProfile: async () => {
     const session = get().session;
     if (!session) return;
-    const profile = await fetchProfile(session.user.id);
-    set({ profile, onboardingCompleted: Boolean((profile as any).onboardingCompletedAt) });
+    await applySession(session, set);
   },
 }));
 
 async function applySession(session: Session | null, set: (partial: Partial<AuthState>) => void) {
   if (!session) {
-    set({ session: null, profile: null, onboardingCompleted: false });
+    set({ session: null, profile: null, onboardingCompleted: false, birthdateConfirmed: true });
     return;
   }
 
@@ -56,7 +60,7 @@ async function applySession(session: Session | null, set: (partial: Partial<Auth
     const { data, error } = await supabase
       .from('profiles')
       .select(
-        'id, username, display_name, avatar_url, bio, city, music_interests, role, is_verified, is_organizer_verified, created_at, onboarding_completed_at'
+        'id, username, display_name, avatar_url, bio, city, music_interests, role, is_verified, is_organizer_verified, created_at, onboarding_completed_at, birthdate_confirmed'
       )
       .eq('id', session.user.id)
       .single();
@@ -77,8 +81,13 @@ async function applySession(session: Session | null, set: (partial: Partial<Auth
       createdAt: data.created_at,
     };
 
-    set({ session, profile, onboardingCompleted: Boolean(data.onboarding_completed_at) });
+    set({
+      session,
+      profile,
+      onboardingCompleted: Boolean(data.onboarding_completed_at),
+      birthdateConfirmed: Boolean(data.birthdate_confirmed),
+    });
   } catch {
-    set({ session, profile: null, onboardingCompleted: false });
+    set({ session, profile: null, onboardingCompleted: false, birthdateConfirmed: true });
   }
 }

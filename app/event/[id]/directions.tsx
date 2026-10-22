@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from '@/components/map/PlatformMap';
+import AppMap from '@/components/map/AppMap';
+import type { MapMarkerSpec } from '@/components/map/AppMap.types';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -9,10 +10,10 @@ import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
-import { MAP_STYLE } from '@/constants/mapStyle';
+import { latLngDeltaToZoom } from '@/lib/mapZoom';
 import { useEventDetail } from '@/hooks/useEventDetail';
 import { useLocationStore } from '@/stores/locationStore';
-import { fetchDrivingDirections, isDirectionsApiConfigured, DirectionsResult } from '@/services/directions';
+import { fetchDrivingDirections, DirectionsResult } from '@/services/directions';
 import { decodePolyline } from '@/lib/polyline';
 
 export default function DirectionsScreen() {
@@ -73,26 +74,29 @@ export default function DirectionsScreen() {
     if (url) Linking.openURL(url).catch(() => Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${destination}`));
   };
 
-  const routeCoords = directions ? decodePolyline(directions.polyline) : [];
+  const routeCoords = directions ? decodePolyline(directions.polyline).map((p) => ({ lat: p.latitude, lng: p.longitude })) : [];
+
+  const mapCenter = {
+    lat: (userCoords.lat + (event.exactLat ?? userCoords.lat)) / 2,
+    lng: (userCoords.lng + (event.exactLng ?? userCoords.lng)) / 2,
+  };
+  const mapZoom = latLngDeltaToZoom(Math.max(Math.abs(userCoords.lat - (event.exactLat ?? 0)) * 2.2, 0.02));
+  const mapMarkers: MapMarkerSpec[] = [
+    { id: 'me', kind: 'dot', lat: userCoords.lat, lng: userCoords.lng, color: colors.textSecondary },
+    { id: 'dest', kind: 'dot', lat: event.exactLat!, lng: event.exactLng!, color: colors.accent },
+  ];
 
   return (
     <Screen edges={['bottom']}>
       <View style={styles.mapWrapper}>
-        <MapView
-          provider={PROVIDER_GOOGLE}
-          customMapStyle={MAP_STYLE}
+        <AppMap
           style={StyleSheet.absoluteFill}
-          initialRegion={{
-            latitude: (userCoords.lat + (event.exactLat ?? userCoords.lat)) / 2,
-            longitude: (userCoords.lng + (event.exactLng ?? userCoords.lng)) / 2,
-            latitudeDelta: Math.max(Math.abs(userCoords.lat - (event.exactLat ?? 0)) * 2.2, 0.02),
-            longitudeDelta: Math.max(Math.abs(userCoords.lng - (event.exactLng ?? 0)) * 2.2, 0.02),
-          }}
-        >
-          <Marker coordinate={{ latitude: userCoords.lat, longitude: userCoords.lng }} pinColor={colors.textSecondary} title="Vos" />
-          <Marker coordinate={{ latitude: event.exactLat!, longitude: event.exactLng! }} title={event.title} />
-          {routeCoords.length > 0 && <Polyline coordinates={routeCoords} strokeColor={colors.accent} strokeWidth={4} />}
-        </MapView>
+          center={mapCenter}
+          zoom={mapZoom}
+          markers={mapMarkers}
+          route={routeCoords}
+          routeColor={colors.accent}
+        />
       </View>
 
       <View style={styles.panel}>
@@ -107,12 +111,9 @@ export default function DirectionsScreen() {
               {directions.distanceText} · {directions.durationText} en auto
             </Text>
           </View>
-        ) : !isDirectionsApiConfigured ? (
-          <Text style={styles.hint}>
-            Configurá EXPO_PUBLIC_GOOGLE_DIRECTIONS_API_KEY para ver distancia y tiempo estimado real acá mismo. Mientras tanto, abrí
-            la navegación completa en Maps.
-          </Text>
-        ) : null}
+        ) : (
+          <Text style={styles.hint}>No pudimos calcular la ruta ahora, pero podés abrir la navegación completa igual.</Text>
+        )}
 
         <Button label="Iniciar navegación" onPress={openInExternalMaps} icon={<Ionicons name="navigate" size={18} color={colors.accentText} />} />
       </View>

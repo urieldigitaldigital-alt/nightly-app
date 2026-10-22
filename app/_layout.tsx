@@ -18,6 +18,7 @@ export default function RootLayout() {
   const loading = useAuthStore((s) => s.loading);
   const session = useAuthStore((s) => s.session);
   const onboardingCompleted = useAuthStore((s) => s.onboardingCompleted);
+  const birthdateConfirmed = useAuthStore((s) => s.birthdateConfirmed);
   const segments = useSegments();
   const router = useRouter();
   const [appReady, setAppReady] = useState(false);
@@ -47,12 +48,16 @@ export default function RootLayout() {
 
     if (!session && !inAuthGroup && !isPublicRoute) {
       router.replace('/(auth)/welcome');
-    } else if (session && !onboardingCompleted && !inAuthGroup && !isPublicRoute) {
+    } else if (session && !birthdateConfirmed && !inAuthGroup && !isPublicRoute) {
+      // Google sign-in never gives us a real birthdate — this screen is
+      // where that gets collected for real before the user goes any further.
+      router.replace('/(auth)/confirm-birthdate');
+    } else if (session && birthdateConfirmed && !onboardingCompleted && !inAuthGroup && !isPublicRoute) {
       router.replace('/(auth)/onboarding-interests');
-    } else if (session && onboardingCompleted && inAuthGroup) {
+    } else if (session && birthdateConfirmed && onboardingCompleted && inAuthGroup) {
       router.replace('/(tabs)/discover');
     }
-  }, [loading, session, onboardingCompleted, segments, router]);
+  }, [loading, session, onboardingCompleted, birthdateConfirmed, segments, router]);
 
   if (loading) {
     return <LoadingState fullscreen />;

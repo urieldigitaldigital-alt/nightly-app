@@ -8,7 +8,7 @@ App móvil (Expo Router + TypeScript) para el lanzamiento en Pinamar, Cariló, O
 
 - **App:** React Native + Expo (SDK 58), TypeScript, Expo Router, React Query, Zustand, React Native Reanimated.
 - **Backend:** Supabase (Postgres + PostGIS, Auth, Realtime, Storage, Edge Functions).
-- **Mapas / geolocalización:** `react-native-maps` (Google Maps Platform), `expo-location`, Google Directions API opcional.
+- **Mapas / geolocalización:** MapLibre GL JS + tiles vectoriales de OpenFreeMap (mapa 3D inclinado estilo Uber, gratis, sin API key ni límite de uso), `expo-location`, ruteo con OSRM (gratis, sin API key).
 - **Notificaciones:** Expo Notifications + tabla `device_tokens`.
 
 ## Estado real del proyecto — qué funciona hoy
@@ -23,12 +23,12 @@ Todo lo que sigue está implementado con lógica real (no hay pantallas decorati
 ### Implementado y conectado a Supabase
 - Autenticación completa (registro, login, recuperar contraseña, onboarding con verificación de mayoría de edad por fecha de nacimiento, intereses musicales, permisos de ubicación).
 - Descubrimiento por radio real con PostGIS (`events_within_radius`), filtros por categoría, gratis/pago, orden por distancia/fecha/popularidad, paginación.
-- Mapa interactivo con clustering básico, mismo backend que el feed.
+- Mapa interactivo 3D (estilo Uber: oscuro, inclinado, edificios extruidos) con clustering básico, mismo backend que el feed.
 - Publicación de fiestas en 4 pasos, con dirección exacta separada de la ubicación pública (jitter server-side para domicilios privados).
 - Sistema de solicitudes con aceptación/rechazo **atómico** (lock a nivel de fila en Postgres — dos aceptaciones simultáneas nunca pueden superar el cupo).
 - Chat 1:1 y grupal en tiempo real (Supabase Realtime), con bloqueo/denuncia.
 - Guardados, Mis planes, Mis fiestas, Amigos (seguir/seguidores/buscar), Notificaciones en tiempo real, Tendencias, Búsqueda global.
-- Navegación "Cómo llegar": mapa con marcador propio + del evento, ETA real vía Google Directions API si está configurada, y hand-off a Google/Apple Maps para la navegación turn-by-turn real (nunca se simula una ruta dibujando una línea).
+- Navegación "Cómo llegar": mapa con marcador propio + del evento, ETA real vía OSRM (gratis, sin API key), y hand-off a Google/Apple Maps para la navegación turn-by-turn real (nunca se simula una ruta dibujando una línea).
 - Panel administrativo básico (denuncias pendientes, acciones vía Edge Function con `service_role`, auditoría).
 - RLS en **todas** las tablas — ningún permiso depende de ocultar un botón en el cliente.
 
@@ -38,7 +38,6 @@ Todo lo que sigue está implementado con lógica real (no hay pantallas decorati
 - Reemplazar el ícono/splash genéricos de Expo por la identidad visual final de NIGHTLY (paleta ya definida en `constants/theme.ts`).
 - Cobros/entradas pagas: no hay integración de pagos. `price_cents` existe en el modelo pero no hay checkout.
 - Verificación de identidad más fuerte que la fecha de nacimiento (spec lo pide explícitamente) — hoy es solo el primer filtro.
-- El mapa no renderiza en el preview web (`react-native-maps` no tiene build de navegador) — funciona normalmente en iOS/Android reales o vía Expo Go. Ver `components/map/PlatformMap.web.tsx`.
 
 ## Configuración
 
@@ -53,9 +52,9 @@ Completá `.env`:
 |---|---|---|
 | `EXPO_PUBLIC_SUPABASE_URL` | Backend | Dashboard de Supabase → Settings → API |
 | `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Backend | Idem |
-| `GOOGLE_MAPS_IOS_API_KEY` / `GOOGLE_MAPS_ANDROID_API_KEY` | Mapa | Google Maps Platform (Maps SDK) |
-| `EXPO_PUBLIC_GOOGLE_DIRECTIONS_API_KEY` | ETA real en "Cómo llegar" (opcional) | Google Maps Platform (Directions API) |
 | `EXPO_PUBLIC_EAS_PROJECT_ID` | Push notifications | `eas init` en expo.dev |
+
+El mapa (MapLibre GL + OpenFreeMap) y el ETA de "Cómo llegar" (OSRM) no necesitan ninguna variable — son gratis, sin API key y sin límite de uso.
 
 Sin las variables de Supabase, la app arranca igual pero el Descubrir/Mapa muestran un estado explícito de "backend no configurado" — nunca datos de prueba disfrazados de reales.
 

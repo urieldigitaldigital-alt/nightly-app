@@ -1,15 +1,14 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import MapView, { Marker, PROVIDER_GOOGLE } from '@/components/map/PlatformMap';
-import type { MapPressEvent, MarkerDragStartEndEvent } from 'react-native-maps';
+import AppMap from '@/components/map/AppMap';
+import type { MapMarkerSpec } from '@/components/map/AppMap.types';
 import { Screen } from '@/components/ui/Screen';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { CategoryChip } from '@/components/ui/CategoryChip';
 import { WizardHeader } from '@/components/event/WizardHeader';
 import { colors, radii, spacing, typography } from '@/constants/theme';
-import { MAP_STYLE } from '@/constants/mapStyle';
 import { LAUNCH_CITIES } from '@/constants/cities';
 import { useCreateEventStore } from '@/stores/createEventStore';
 import { VenueType } from '@/types/models';
@@ -32,6 +31,10 @@ export default function CreateEventStep2() {
   const defaultCity = LAUNCH_CITIES.find((c) => c.name === draft.city) ?? LAUNCH_CITIES[0];
   const pinLat = draft.exactLat ?? defaultCity.lat;
   const pinLng = draft.exactLng ?? defaultCity.lng;
+  const pinMarkers = useMemo<MapMarkerSpec[]>(
+    () => [{ id: 'pin', kind: 'dot', lat: pinLat, lng: pinLng, color: colors.accent, draggable: true }],
+    [pinLat, pinLng]
+  );
 
   const handleNext = () => {
     if (!draft.venueType || !draft.city || !draft.exactAddress.trim() || draft.exactLat == null) {
@@ -83,19 +86,15 @@ export default function CreateEventStep2() {
           <View>
             <Text style={styles.label}>Marcá el punto exacto</Text>
             <View style={styles.mapWrapper}>
-              <MapView
-                provider={PROVIDER_GOOGLE}
-                customMapStyle={MAP_STYLE}
+              <AppMap
                 style={StyleSheet.absoluteFill}
-                initialRegion={{ latitude: pinLat, longitude: pinLng, latitudeDelta: 0.03, longitudeDelta: 0.03 }}
-                onPress={(e: MapPressEvent) => update({ exactLat: e.nativeEvent.coordinate.latitude, exactLng: e.nativeEvent.coordinate.longitude })}
-              >
-                <Marker
-                  draggable
-                  coordinate={{ latitude: pinLat, longitude: pinLng }}
-                  onDragEnd={(e: MarkerDragStartEndEvent) => update({ exactLat: e.nativeEvent.coordinate.latitude, exactLng: e.nativeEvent.coordinate.longitude })}
-                />
-              </MapView>
+                center={{ lat: pinLat, lng: pinLng }}
+                zoom={16}
+                pitch={0}
+                markers={pinMarkers}
+                onMapPress={(coord) => update({ exactLat: coord.lat, exactLng: coord.lng })}
+                onMarkerDragEnd={(_id, coord) => update({ exactLat: coord.lat, exactLng: coord.lng })}
+              />
             </View>
             <Text style={styles.hint}>Tocá el mapa o arrastrá el marcador para ajustar la ubicación.</Text>
           </View>
