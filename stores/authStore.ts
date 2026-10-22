@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { consumeOAuthError } from '@/lib/oauthCallback';
 import { Profile } from '@/types/models';
 
 type AuthState = {
@@ -9,8 +10,10 @@ type AuthState = {
   onboardingCompleted: boolean;
   birthdateConfirmed: boolean;
   loading: boolean;
+  oauthError: string | null;
   initialize: () => () => void;
   refreshProfile: () => Promise<void>;
+  clearOAuthError: () => void;
 };
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -19,9 +22,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   onboardingCompleted: false,
   birthdateConfirmed: true,
   loading: true,
+  oauthError: null,
 
   initialize: () => {
     let cancelled = false;
+    // Must run before Supabase's own URL parsing has a chance to strip the
+    // query string, so grab any ?error=... from a failed OAuth redirect
+    // first and hold onto it for the welcome screen to show.
+    const oauthError = consumeOAuthError();
+    if (oauthError) set({ oauthError });
 
     supabase.auth.getSession().then(async ({ data }) => {
       if (cancelled) return;
@@ -48,6 +57,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (!session) return;
     await applySession(session, set);
   },
+
+  clearOAuthError: () => set({ oauthError: null }),
 }));
 
 async function applySession(session: Session | null, set: (partial: Partial<AuthState>) => void) {

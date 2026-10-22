@@ -39,7 +39,11 @@ export default function LoginScreen() {
       await signIn(email, password);
       // app/_layout.tsx's guard effect takes it from here (tabs vs onboarding).
     } catch (e: any) {
-      setError(e?.message?.includes('Invalid login') ? 'Email o contraseña incorrectos.' : 'Algo salió mal. Probá de nuevo.');
+      setError(
+        e?.message?.includes('Invalid login')
+          ? 'Email o contraseña incorrectos. Si te registraste con Google, usá "Continuar con Google" en vez de contraseña.'
+          : 'Algo salió mal. Probá de nuevo.'
+      );
     } finally {
       setLoading(false);
     }

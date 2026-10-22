@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { brand } from '@/constants/brand';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { signInWithGoogle } from '@/services/auth';
+import { useAuthStore } from '@/stores/authStore';
 
 const SLIDES = [
   {
@@ -32,8 +33,18 @@ export default function WelcomeScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
+  const oauthError = useAuthStore((s) => s.oauthError);
+  const clearOAuthError = useAuthStore((s) => s.clearOAuthError);
+
+  // A failed Google redirect (denied, misconfigured redirect URL, etc.)
+  // lands back here with no session — authStore already pulled the real
+  // reason out of the URL before the router guard could strip it.
+  useEffect(() => {
+    if (oauthError) setGoogleError(oauthError);
+  }, [oauthError]);
 
   const handleGoogle = async () => {
+    clearOAuthError();
     setGoogleError(null);
     setGoogleLoading(true);
     try {

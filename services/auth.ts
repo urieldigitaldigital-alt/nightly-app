@@ -42,7 +42,10 @@ export async function signInWithGoogle() {
   if (Platform.OS === 'web') {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      // Trailing slash so this matches a `<site>/**` entry in Supabase's
+      // redirect-URL allowlist unambiguously — some glob matchers don't
+      // treat `**` as matching zero path segments.
+      options: { redirectTo: `${window.location.origin}/` },
     });
     if (error) throw error;
     return;
