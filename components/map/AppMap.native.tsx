@@ -56,6 +56,14 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number, pitch: nu
             '</div>'
           : '') +
         '</div>';
+    } else if (m.heading != null) {
+      // Directional "you are here" arrow — points true north at rotation 0;
+      // rotationAlignment:'map' on the Marker keeps it correctly oriented as
+      // the map itself rotates to track the device's heading.
+      el.innerHTML =
+        '<div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid ' +
+        (m.color || '#ACFF2F') +
+        ';filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6));"></div>';
     } else {
       el.innerHTML =
         '<div style="width:16px;height:16px;border-radius:8px;background:' +
@@ -67,14 +75,26 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number, pitch: nu
   }
 
   function renderMarkers(markers) {
-    Object.keys(markersById).forEach(function (id) { markersById[id].remove(); });
-    markersById = {};
+    var seen = {};
     markers.forEach(function (m) {
+      seen[m.id] = true;
+      var existing = markersById[m.id];
+      if (existing) {
+        existing.setLngLat([m.lng, m.lat]);
+        if (m.kind === 'dot' && m.heading != null) existing.setRotation(m.heading);
+        return;
+      }
       var el = makeEl(m);
       el.addEventListener('click', function (e) { e.stopPropagation(); post({ type: 'markerPress', id: m.id }); });
-      var marker = new maplibregl.Marker({ element: el, draggable: !!m.draggable, anchor: m.kind === 'photo' ? 'bottom' : 'center' })
+      var marker = new maplibregl.Marker({
+        element: el,
+        draggable: !!m.draggable,
+        anchor: m.kind === 'photo' ? 'bottom' : 'center',
+        rotationAlignment: m.kind === 'dot' && m.heading != null ? 'map' : 'viewport',
+      })
         .setLngLat([m.lng, m.lat])
         .addTo(map);
+      if (m.kind === 'dot' && m.heading != null) marker.setRotation(m.heading);
       if (m.draggable) {
         marker.on('dragend', function () {
           var pos = marker.getLngLat();
@@ -82,6 +102,9 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number, pitch: nu
         });
       }
       markersById[m.id] = marker;
+    });
+    Object.keys(markersById).forEach(function (id) {
+      if (!seen[id]) { markersById[id].remove(); delete markersById[id]; }
     });
   }
 
@@ -105,10 +128,15 @@ function buildHtml(center: { lat: number; lng: number }, zoom: number, pitch: nu
 
   map.on('click', function (e) { post({ type: 'mapPress', lat: e.lngLat.lat, lng: e.lngLat.lng }); });
   map.on('load', function () { post({ type: 'ready' }); });
+  map.on('dragstart', function (e) { if (e.originalEvent) post({ type: 'userPanStart' }); });
 
   window.updateMarkers = renderMarkers;
   window.updateRoute = renderRoute;
-  window.setMapView = function (lat, lng, z) { map.jumpTo({ center: [lng, lat], zoom: z }); };
+  window.setMapView = function (lat, lng, z, p, b, animate) {
+    var opts = { center: [lng, lat], zoom: z, pitch: p, bearing: b };
+    if (animate) map.easeTo(Object.assign({ duration: 900 }, opts));
+    else map.jumpTo(opts);
+  };
 </script>
 </body>
 </html>`;
@@ -120,12 +148,14 @@ export default function AppMapNative({
   zoom,
   pitch = 60,
   bearing = -17,
+  animate = true,
   markers = [],
   route,
   routeColor,
   onMarkerPress,
   onMapPress,
   onMarkerDragEnd,
+  onUserPanStart,
 }: AppMapProps) {
   const webviewRef = useRef<any>(null);
   const readyRef = useRef(false);
@@ -135,8 +165,8 @@ export default function AppMapNative({
 
   useEffect(() => {
     if (!readyRef.current) return;
-    webviewRef.current?.injectJavaScript(`window.setMapView(${center.lat}, ${center.lng}, ${zoom}); true;`);
-  }, [center.lat, center.lng, zoom]);
+    webviewRef.current?.injectJavaScript(`window.setMapView(${center.lat}, ${center.lng}, ${zoom}, ${pitch}, ${bearing}, ${animate}); true;`);
+  }, [center.lat, center.lng, zoom, pitch, bearing, animate]);
 
   useEffect(() => {
     if (!readyRef.current) return;
@@ -164,6 +194,8 @@ export default function AppMapNative({
         onMapPress?.({ lat: msg.lat, lng: msg.lng });
       } else if (msg.type === 'markerDragEnd') {
         onMarkerDragEnd?.(msg.id, { lat: msg.lat, lng: msg.lng });
+      } else if (msg.type === 'userPanStart') {
+        onUserPanStart?.();
       }
     } catch {
       // ignore malformed messages

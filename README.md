@@ -28,7 +28,7 @@ Todo lo que sigue está implementado con lógica real (no hay pantallas decorati
 - Sistema de solicitudes con aceptación/rechazo **atómico** (lock a nivel de fila en Postgres — dos aceptaciones simultáneas nunca pueden superar el cupo).
 - Chat 1:1 y grupal en tiempo real (Supabase Realtime), con bloqueo/denuncia.
 - Guardados, Mis planes, Mis fiestas, Amigos (seguir/seguidores/buscar), Notificaciones en tiempo real, Tendencias, Búsqueda global.
-- Navegación "Cómo llegar": mapa con marcador propio + del evento, ETA real vía OSRM (gratis, sin API key), y hand-off a Google/Apple Maps para la navegación turn-by-turn real (nunca se simula una ruta dibujando una línea).
+- Navegación "Cómo llegar": seguimiento GPS en vivo (posición y rumbo reales via `watchPositionAsync`, mapa que sigue y rota con vos, botón "centrar" si te alejás), ETA real vía OSRM (gratis, sin API key), y hand-off a Google/Apple Maps para la navegación turn-by-turn real (nunca se simula una ruta dibujando una línea).
 - Panel administrativo básico (denuncias pendientes, acciones vía Edge Function con `service_role`, auditoría).
 - RLS en **todas** las tablas — ningún permiso depende de ocultar un botón en el cliente.
 

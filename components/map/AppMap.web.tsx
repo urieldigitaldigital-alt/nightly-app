@@ -44,6 +44,11 @@ function makeEl(m: MapMarkerSpec): HTMLDivElement {
         ? `<div style="position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#ACFF2F;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;padding:0 4px;color:#111;">${m.badge}</div>`
         : ''
     }</div>`;
+  } else if (m.heading != null) {
+    // Directional "you are here" arrow — points true north at rotation 0;
+    // rotationAlignment:'map' on the Marker keeps it correctly oriented as
+    // the map itself rotates to track the device's heading.
+    el.innerHTML = `<div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid ${m.color || '#ACFF2F'};filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6));"></div>`;
   } else {
     el.innerHTML = `<div style="width:16px;height:16px;border-radius:8px;background:${m.color || '#ACFF2F'};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.6);"></div>`;
   }
@@ -57,18 +62,21 @@ export default function AppMapWeb({
   zoom,
   pitch = 60,
   bearing = -17,
+  animate = true,
   markers = [],
   route,
   routeColor,
   onMarkerPress,
   onMapPress,
   onMarkerDragEnd,
+  onUserPanStart,
 }: AppMapProps) {
   const containerRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
+  const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const markersRef = useRef<Record<string, any>>({});
-  const callbacksRef = useRef({ onMarkerPress, onMapPress, onMarkerDragEnd });
-  callbacksRef.current = { onMarkerPress, onMapPress, onMarkerDragEnd };
+  const callbacksRef = useRef({ onMarkerPress, onMapPress, onMarkerDragEnd, onUserPanStart });
+  callbacksRef.current = { onMarkerPress, onMapPress, onMarkerDragEnd, onUserPanStart };
 
   useEffect(() => {
     let cancelled = false;
@@ -84,10 +92,22 @@ export default function AppMapWeb({
         attributionControl: true,
       });
       map.on('click', (e: any) => callbacksRef.current.onMapPress?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
+      map.on('dragstart', (e: any) => { if (e.originalEvent) callbacksRef.current.onUserPanStart?.(); });
       mapRef.current = map;
+
+      // MapLibre sizes its canvas once at construction time and never
+      // re-measures on its own — without this, the canvas stays pinned to
+      // whatever size the flex container happened to be at that instant,
+      // which on some viewports is smaller than the fully laid-out size.
+      if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
+        resizeObserverRef.current = new ResizeObserver(() => map.resize());
+        resizeObserverRef.current.observe(containerRef.current);
+      }
     });
     return () => {
       cancelled = true;
+      resizeObserverRef.current?.disconnect();
+      resizeObserverRef.current = null;
       Object.values(markersRef.current).forEach((m: any) => m.remove());
       markersRef.current = {};
       mapRef.current?.remove();
@@ -97,24 +117,41 @@ export default function AppMapWeb({
   }, []);
 
   useEffect(() => {
-    mapRef.current?.jumpTo({ center: [center.lng, center.lat], zoom, pitch, bearing });
-  }, [center.lat, center.lng, zoom, pitch, bearing]);
+    const map = mapRef.current;
+    if (!map) return;
+    const opts = { center: [center.lng, center.lat], zoom, pitch, bearing };
+    if (animate) map.easeTo({ ...opts, duration: 900 });
+    else map.jumpTo(opts);
+  }, [center.lat, center.lng, zoom, pitch, bearing, animate]);
 
   useEffect(() => {
     loadMaplibre().then((maplibregl) => {
       const map = mapRef.current;
       if (!map) return;
-      Object.values(markersRef.current).forEach((m: any) => m.remove());
-      markersRef.current = {};
+      const seen = new Set<string>();
       markers.forEach((m) => {
+        seen.add(m.id);
+        const existing = markersRef.current[m.id];
+        if (existing) {
+          existing.setLngLat([m.lng, m.lat]);
+          if (m.kind === 'dot' && m.heading != null) existing.setRotation(m.heading);
+          return;
+        }
         const el = makeEl(m);
         el.addEventListener('click', (e) => {
           e.stopPropagation();
           callbacksRef.current.onMarkerPress?.(m.id);
         });
-        const marker = new maplibregl.Marker({ element: el, draggable: m.kind === 'dot' && !!m.draggable, anchor: m.kind === 'photo' ? 'bottom' : 'center' })
+        const hasHeading = m.kind === 'dot' && m.heading != null;
+        const marker = new maplibregl.Marker({
+          element: el,
+          draggable: m.kind === 'dot' && !!m.draggable,
+          anchor: m.kind === 'photo' ? 'bottom' : 'center',
+          rotationAlignment: hasHeading ? 'map' : 'viewport',
+        })
           .setLngLat([m.lng, m.lat])
           .addTo(map);
+        if (m.kind === 'dot' && m.heading != null) marker.setRotation(m.heading);
         if (m.kind === 'dot' && m.draggable) {
           marker.on('dragend', () => {
             const pos = marker.getLngLat();
@@ -122,6 +159,12 @@ export default function AppMapWeb({
           });
         }
         markersRef.current[m.id] = marker;
+      });
+      Object.keys(markersRef.current).forEach((id) => {
+        if (!seen.has(id)) {
+          markersRef.current[id].remove();
+          delete markersRef.current[id];
+        }
       });
     });
   }, [markers]);

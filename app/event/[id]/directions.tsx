@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AppMap from '@/components/map/AppMap';
-import type { MapMarkerSpec } from '@/components/map/AppMap.types';
+import type { LatLng, MapMarkerSpec } from '@/components/map/AppMap.types';
 import * as Location from 'expo-location';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -10,31 +10,69 @@ import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
-import { latLngDeltaToZoom } from '@/lib/mapZoom';
+import { haversineMeters } from '@/lib/geo';
 import { useEventDetail } from '@/hooks/useEventDetail';
 import { useLocationStore } from '@/stores/locationStore';
 import { fetchDrivingDirections, DirectionsResult } from '@/services/directions';
 import { decodePolyline } from '@/lib/polyline';
+
+// Street-level, tilted "in navigation" view — matches the live-tracking
+// follow mode this screen puts the map in (see FOLLOW below).
+const FOLLOW_ZOOM = 17;
+const FOLLOW_PITCH = 60;
+const OVERVIEW_BEARING = -17;
+// Below this, re-fetching a route from OSRM on every GPS tick would just
+// hammer their free router for a route that hasn't meaningfully changed.
+const REROUTE_THRESHOLD_METERS = 30;
 
 export default function DirectionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: event, isLoading } = useEventDetail(id);
   const fallbackOrigin = useLocationStore((s) => s.origin);
-  const [userCoords, setUserCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [userCoords, setUserCoords] = useState<LatLng | null>(null);
+  const [heading, setHeading] = useState<number | null>(null);
   const [directions, setDirections] = useState<DirectionsResult | null>(null);
   const [loadingDirections, setLoadingDirections] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(true);
+  const [viewState, setViewState] = useState<{ center: LatLng; zoom: number; pitch: number; bearing: number } | null>(null);
+
+  const isFollowingRef = useRef(isFollowing);
+  isFollowingRef.current = isFollowing;
+  const lastBearingRef = useRef(OVERVIEW_BEARING);
+  const lastFetchCoordsRef = useRef<LatLng | null>(null);
 
   useEffect(() => {
+    let subscription: Location.LocationSubscription | null = null;
+    let cancelled = false;
+
     (async () => {
       const { status } = await Location.getForegroundPermissionsAsync();
-      if (status === Location.PermissionStatus.GRANTED) {
-        const position = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        setUserCoords({ lat: position.coords.latitude, lng: position.coords.longitude });
-      } else {
-        setUserCoords({ lat: fallbackOrigin.lat, lng: fallbackOrigin.lng });
+      if (status !== Location.PermissionStatus.GRANTED) {
+        if (!cancelled) setUserCoords({ lat: fallbackOrigin.lat, lng: fallbackOrigin.lng });
+        return;
       }
+      subscription = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.BestForNavigation, timeInterval: 2000, distanceInterval: 5 },
+        (position) => {
+          const coords: LatLng = { lat: position.coords.latitude, lng: position.coords.longitude };
+          const liveHeading = position.coords.heading;
+          const validHeading = liveHeading != null && liveHeading >= 0 ? liveHeading : null;
+          if (validHeading != null) lastBearingRef.current = validHeading;
+
+          setUserCoords(coords);
+          setHeading(validHeading);
+          if (isFollowingRef.current) {
+            setViewState({ center: coords, zoom: FOLLOW_ZOOM, pitch: FOLLOW_PITCH, bearing: lastBearingRef.current });
+          }
+        }
+      );
     })();
+
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+    };
   }, [fallbackOrigin]);
 
   const destLat = event?.exactLat ?? null;
@@ -42,11 +80,20 @@ export default function DirectionsScreen() {
 
   useEffect(() => {
     if (!userCoords || !event?.exactAddress || destLat == null || destLng == null) return;
+    const last = lastFetchCoordsRef.current;
+    if (last && haversineMeters(last, userCoords) < REROUTE_THRESHOLD_METERS) return;
+    lastFetchCoordsRef.current = userCoords;
     setLoadingDirections(true);
     fetchDrivingDirections(userCoords.lat, userCoords.lng, destLat, destLng)
       .then(setDirections)
       .finally(() => setLoadingDirections(false));
   }, [userCoords, event?.exactAddress, destLat, destLng]);
+
+  const handleRecenter = () => {
+    if (!userCoords) return;
+    setIsFollowing(true);
+    setViewState({ center: userCoords, zoom: FOLLOW_ZOOM, pitch: FOLLOW_PITCH, bearing: lastBearingRef.current });
+  };
 
   if (isLoading || !userCoords) return <LoadingState fullscreen />;
 
@@ -76,14 +123,10 @@ export default function DirectionsScreen() {
 
   const routeCoords = directions ? decodePolyline(directions.polyline).map((p) => ({ lat: p.latitude, lng: p.longitude })) : [];
 
-  const mapCenter = {
-    lat: (userCoords.lat + (event.exactLat ?? userCoords.lat)) / 2,
-    lng: (userCoords.lng + (event.exactLng ?? userCoords.lng)) / 2,
-  };
-  const mapZoom = latLngDeltaToZoom(Math.max(Math.abs(userCoords.lat - (event.exactLat ?? 0)) * 2.2, 0.02));
+  const view = viewState ?? { center: userCoords, zoom: FOLLOW_ZOOM, pitch: FOLLOW_PITCH, bearing: lastBearingRef.current };
   const mapMarkers: MapMarkerSpec[] = [
-    { id: 'me', kind: 'dot', lat: userCoords.lat, lng: userCoords.lng, color: colors.textSecondary },
-    { id: 'dest', kind: 'dot', lat: event.exactLat!, lng: event.exactLng!, color: colors.accent },
+    { id: 'me', kind: 'dot', lat: userCoords.lat, lng: userCoords.lng, color: colors.accent, heading: heading ?? undefined },
+    { id: 'dest', kind: 'dot', lat: event.exactLat!, lng: event.exactLng!, color: colors.textSecondary },
   ];
 
   return (
@@ -91,12 +134,21 @@ export default function DirectionsScreen() {
       <View style={styles.mapWrapper}>
         <AppMap
           style={StyleSheet.absoluteFill}
-          center={mapCenter}
-          zoom={mapZoom}
+          center={view.center}
+          zoom={view.zoom}
+          pitch={view.pitch}
+          bearing={view.bearing}
           markers={mapMarkers}
           route={routeCoords}
           routeColor={colors.accent}
+          onUserPanStart={() => setIsFollowing(false)}
         />
+
+        {!isFollowing && (
+          <Pressable style={styles.recenterButton} onPress={handleRecenter}>
+            <Ionicons name="locate" size={20} color={colors.accentText} />
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.panel}>
@@ -123,6 +175,22 @@ export default function DirectionsScreen() {
 
 const styles = StyleSheet.create({
   mapWrapper: { flex: 1 },
+  recenterButton: {
+    position: 'absolute',
+    bottom: spacing.lg,
+    right: spacing.lg,
+    width: 44,
+    height: 44,
+    borderRadius: radii.pill,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   panel: { padding: spacing.lg, gap: spacing.sm, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   address: { color: colors.textPrimary, fontSize: typography.size.lg, fontWeight: typography.weight.semibold },
   etaRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
