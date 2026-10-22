@@ -55,8 +55,15 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      await signUp({ email, password, username, displayName, birthdate });
-      router.replace('/(auth)/onboarding-profile');
+      const { session } = await signUp({ email, password, username, displayName, birthdate });
+      if (session) {
+        router.replace('/(auth)/onboarding-profile');
+      } else {
+        // Only reachable if email confirmation ever gets re-enabled in
+        // Supabase — signUp() succeeds but there's no session yet, so
+        // onboarding (which needs an authenticated request) would crash.
+        setError('Revisá tu email para confirmar tu cuenta antes de continuar.');
+      }
     } catch (e: any) {
       setError(translateAuthError(e?.message));
     } finally {
