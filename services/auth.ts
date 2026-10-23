@@ -37,75 +37,19 @@ export async function signIn(email: string, password: string) {
 /** "Continuar con Google". Google never gives us a real birthdate, so a
  * first-time Google signup lands with birthdate_confirmed=false (see
  * 0014_oauth_signup.sql) — app/_layout.tsx's guard sends those users to
- * confirm-birthdate before letting them into the app. */
-/** True when running as an iOS/Android "Add to Home Screen" app rather than
- * a normal browser tab. `navigator.standalone` is the (non-standard but
- * only) way iOS Safari exposes this; `display-mode: standalone` is the
- * cross-platform media query other browsers use. */
-function isStandaloneWebApp(): boolean {
-  if (typeof window === 'undefined') return false;
-  return Boolean((window.navigator as any).standalone) || window.matchMedia?.('(display-mode: standalone)').matches;
-}
-
+ * confirm-birthdate before letting them into the app.
+ *
+ * A popup-based flow was tried here to avoid iOS dropping standalone
+ * ("Add to Home Screen") mode during the Google redirect round trip —
+ * reverted after real-device testing showed window.open() inside iOS
+ * standalone doesn't reliably open a separate window at all (it appears to
+ * navigate the single standalone window itself), which made the whole
+ * sign-in loop back to the welcome screen instead of completing. A plain
+ * full-page redirect is what's actually verified to work; losing
+ * standalone-mode chrome during that round trip is a real but lesser
+ * problem than sign-in not working. */
 export async function signInWithGoogle() {
   if (Platform.OS === 'web') {
-    // A normal full-page redirect to accounts.google.com and back is what
-    // "Add to Home Screen" apps are supposed to handle, but iOS Safari
-    // reliably drops standalone mode and reopens the return trip in a
-    // regular Safari tab instead — a popup keeps the standalone window's
-    // own location untouched the whole time, which avoids that entirely.
-    if (isStandaloneWebApp()) {
-      // window.open() must fire synchronously inside the tap's own event
-      // handler or Safari's popup blocker silently kills it — the previous
-      // version awaited signInWithOAuth() first to get the URL, which broke
-      // that chain and blocked the popup outright (login just stopped
-      // working instead of merely losing standalone mode). Opening a blank
-      // popup immediately, then pointing it at the real URL once we have
-      // it, keeps window.open() itself synchronous.
-      const popup = window.open('', 'nightly-google-auth', 'width=480,height=640');
-
-      if (popup) {
-        try {
-          const { data, error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { redirectTo: `${window.location.origin}/`, skipBrowserRedirect: true },
-          });
-          if (error) throw error;
-          if (!data.url) throw new Error('NO_OAUTH_URL');
-          popup.location.href = data.url;
-
-          await new Promise<void>((resolve) => {
-            const timer = setInterval(() => {
-              if (popup.closed) {
-                clearInterval(timer);
-                resolve();
-              }
-            }, 400);
-            setTimeout(() => {
-              clearInterval(timer);
-              resolve();
-            }, 120000);
-          });
-
-          // The popup loaded our own app at our own origin and wrote the
-          // new session to localStorage itself (see the window.opener
-          // self-close logic in app/_layout.tsx) — supabase-js syncs that
-          // across tabs on its own, but re-check explicitly in case the
-          // storage event raced.
-          const { data: sessionData } = await supabase.auth.getSession();
-          if (!sessionData.session) throw new Error('OAUTH_INCOMPLETE');
-          return;
-        } catch (e) {
-          if (!popup.closed) popup.close();
-          throw e;
-        }
-      }
-      // Popup blocked outright (not just the earlier timing bug — some
-      // iOS versions may not support window.open from a standalone context
-      // at all) — fall through to the plain redirect below so sign-in
-      // still works, even though it'll cost standalone mode this once.
-    }
-
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       // Trailing slash so this matches a `<site>/**` entry in Supabase's

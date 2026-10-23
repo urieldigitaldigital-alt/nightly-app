@@ -15,6 +15,27 @@ const tags = `
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="NIGHTLY" />
     <link rel="apple-touch-icon" href="/icon.png" />
+    <style>
+      /* Without this, iOS treats the whole thing as a scrollable web page:
+         swiping past the content's edge rubber-bands and reveals the
+         browser's default white background underneath — reads as "a photo
+         of an app", not an app. Expo's own #expo-reset block already sets
+         height:100% and body{overflow:hidden}, but standalone mode still
+         needs the body pinned in place (position:fixed) and a matching
+         background color, or that bounce still shows through as white.
+         Content still scrolls normally — this only stops the outer page
+         itself from moving; every actual scroll view inside #root manages
+         its own internal scrolling independently. */
+      html, body {
+        background-color: #080808;
+        overscroll-behavior: none;
+      }
+      body {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+      }
+    </style>
   `;
 
 if (html.includes('apple-mobile-web-app-capable')) {
