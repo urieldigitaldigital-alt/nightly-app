@@ -89,7 +89,9 @@ export default function AppMapWeb({
         zoom,
         pitch,
         bearing,
-        attributionControl: true,
+        // OpenFreeMap/OSM's license requires attribution to stay somewhere,
+        // but not expanded — compact collapses it to just the "i" icon.
+        attributionControl: { compact: true },
       });
       map.on('click', (e: any) => callbacksRef.current.onMapPress?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
       map.on('dragstart', (e: any) => { if (e.originalEvent) callbacksRef.current.onUserPanStart?.(); });
