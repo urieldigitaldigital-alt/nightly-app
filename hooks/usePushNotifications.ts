@@ -24,17 +24,28 @@ export function usePushNotifications(enabled: boolean) {
     let subscription: Notifications.Subscription | undefined;
 
     (async () => {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      let status = existingStatus;
-      if (status !== 'granted') {
-        const result = await Notifications.requestPermissionsAsync();
-        status = result.status;
-      }
-      if (status !== 'granted') return;
+      // Web push needs a VAPID key configured in app.json that this project
+      // doesn't have yet — skip registering there instead of throwing on
+      // every load. Native (iOS/Android) push works as-is.
+      if (Platform.OS === 'web') return;
 
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      const tokenResponse = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
-      await registerPushToken(tokenResponse.data, Platform.OS === 'ios' ? 'ios' : 'android');
+      try {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let status = existingStatus;
+        if (status !== 'granted') {
+          const result = await Notifications.requestPermissionsAsync();
+          status = result.status;
+        }
+        if (status !== 'granted') return;
+
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        const tokenResponse = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
+        await registerPushToken(tokenResponse.data, Platform.OS === 'ios' ? 'ios' : 'android');
+      } catch (e) {
+        // Push is optional — a failed registration (denied permission,
+        // simulator with no APNs entitlement, etc.) shouldn't be a crash.
+        console.warn('[nightly] push registration failed', e);
+      }
     })();
 
     subscription = Notifications.addNotificationResponseReceivedListener(() => {
