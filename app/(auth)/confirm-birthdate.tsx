@@ -41,7 +41,7 @@ export default function ConfirmBirthdateScreen() {
     try {
       await confirmBirthdate(birthdate);
       await refreshProfile();
-      // app/_layout.tsx's guard takes it from here.
+      router.push('/(auth)/onboarding-profile');
     } catch (e: any) {
       setError(e?.message?.includes('MUST_BE_ADULT') ? 'Tenés que ser mayor de 18 años para usar NIGHTLY.' : 'No pudimos guardar tu fecha de nacimiento. Probá de nuevo.');
     } finally {
