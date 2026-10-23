@@ -96,6 +96,12 @@ export default function AppMapWeb({
         attributionControl: false,
       });
       map.addControl(new maplibregl.AttributionControl({ compact: true }));
+      // Compact mode renders a <details open> element, which starts
+      // expanded — also verified live. Collapsing it is just removing that
+      // attribute; MapLibre's own toggle (the "i" button) re-opens it fine
+      // from here since that's a plain details/summary disclosure.
+      const attribEl = containerRef.current.querySelector('.maplibregl-ctrl-attrib');
+      attribEl?.removeAttribute('open');
       map.on('click', (e: any) => callbacksRef.current.onMapPress?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
       map.on('dragstart', (e: any) => { if (e.originalEvent) callbacksRef.current.onUserPanStart?.(); });
       mapRef.current = map;
