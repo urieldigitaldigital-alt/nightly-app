@@ -59,6 +59,8 @@ export type EventDetail = EventSummary & {
   exactLat: number | null;
   exactLng: number | null;
   myRequestStatus: RequestStatus | null;
+  /** The viewer's own door entry code, present once their request is accepted. */
+  myEntryCode: string | null;
   isSaved: boolean;
 };
 
@@ -69,6 +71,7 @@ export type EventRequest = {
   status: RequestStatus;
   message: string | null;
   createdAt: string;
+  dniPhotoPath: string | null;
 };
 
 export type EventAttendee = {
@@ -107,7 +110,8 @@ export type NotificationType =
   | 'event_location_changed'
   | 'event_cancelled'
   | 'event_upcoming'
-  | 'capacity_changed';
+  | 'capacity_changed'
+  | 'event_nearby';
 
 export type AppNotification = {
   id: string;

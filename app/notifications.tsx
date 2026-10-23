@@ -23,6 +23,7 @@ const ICON_BY_TYPE: Record<string, keyof typeof Ionicons.glyphMap> = {
   event_cancelled: 'warning-outline',
   event_upcoming: 'alarm-outline',
   capacity_changed: 'people-outline',
+  event_nearby: 'compass-outline',
 };
 
 export default function NotificationsScreen() {

@@ -43,3 +43,20 @@ export async function uploadEventImage(eventId: string, localUri: string, sortOr
   const { data } = supabase.storage.from('event-images').getPublicUrl(path);
   return data.publicUrl;
 }
+
+/** `dni-photos` is a private bucket (0016_push_dni_checkin.sql) — there's no
+ * getPublicUrl for it. Returns the storage path, which request_event_access
+ * stores on the request row; viewing it later goes through the
+ * get-dni-signed-url Edge Function, never a direct public URL. */
+export async function uploadDniPhoto(requesterId: string, eventId: string, localUri: string): Promise<string> {
+  const ext = extensionFromUri(localUri);
+  const path = `${requesterId}/${eventId}-${Date.now()}.${ext}`;
+  const buffer = await uriToArrayBuffer(localUri);
+
+  const { error } = await supabase.storage.from('dni-photos').upload(path, buffer, {
+    contentType: `image/${ext === 'jpg' ? 'jpeg' : ext}`,
+  });
+  if (error) throw error;
+
+  return path;
+}

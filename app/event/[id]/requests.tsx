@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { Screen } from '@/components/ui/Screen';
@@ -10,7 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useReceivedRequests } from '@/hooks/useReceivedRequests';
-import { acceptEventRequest, rejectEventRequest } from '@/services/requests';
+import { acceptEventRequest, rejectEventRequest, getDniSignedUrl } from '@/services/requests';
 import { formatRelativeShort } from '@/lib/format';
 import { EventRequest } from '@/types/models';
 
@@ -110,6 +111,21 @@ function RequestRow({
 }) {
   const status = STATUS_COPY[request.status];
   const isPending = request.status === 'pending' || request.status === 'waitlisted';
+  const [dniUrl, setDniUrl] = useState<string | null>(null);
+  const [loadingDni, setLoadingDni] = useState(false);
+  const [dniModalVisible, setDniModalVisible] = useState(false);
+
+  const handleViewDni = async () => {
+    setDniModalVisible(true);
+    if (dniUrl) return;
+    setLoadingDni(true);
+    try {
+      const url = await getDniSignedUrl(request.id);
+      setDniUrl(url);
+    } finally {
+      setLoadingDni(false);
+    }
+  };
 
   return (
     <View style={styles.row}>
@@ -124,6 +140,11 @@ function RequestRow({
             </Text>
           ) : null}
           <Text style={styles.time}>{formatRelativeShort(request.createdAt)}</Text>
+          {request.dniPhotoPath ? (
+            <Pressable onPress={handleViewDni} hitSlop={6}>
+              <Text style={styles.viewDni}>Ver DNI</Text>
+            </Pressable>
+          ) : null}
         </View>
       </Pressable>
 
@@ -139,6 +160,18 @@ function RequestRow({
       ) : (
         status && <Badge label={status.label} tone={status.tone} />
       )}
+
+      <Modal visible={dniModalVisible} transparent animationType="fade" onRequestClose={() => setDniModalVisible(false)}>
+        <Pressable style={styles.dniModalOverlay} onPress={() => setDniModalVisible(false)}>
+          {loadingDni ? (
+            <LoadingState />
+          ) : dniUrl ? (
+            <Image source={{ uri: dniUrl }} style={styles.dniModalImage} contentFit="contain" />
+          ) : (
+            <Text style={styles.viewDni}>No pudimos cargar la foto.</Text>
+          )}
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -166,4 +199,7 @@ const styles = StyleSheet.create({
   actionButton: { width: 36, height: 36, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
   reject: { backgroundColor: 'rgba(255,92,92,0.12)' },
   accept: { backgroundColor: colors.accent },
+  viewDni: { color: colors.accent, fontSize: typography.size.xs, fontWeight: typography.weight.semibold, marginTop: 4 },
+  dniModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center' },
+  dniModalImage: { width: '90%', height: '70%' },
 });

@@ -17,10 +17,13 @@ import { radiusKmToZoom } from '@/lib/mapZoom';
 import { formatDistance, formatEventDateTime } from '@/lib/format';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
+const RADIUS_OPTIONS_KM = [10, 25, 50, 100];
+
 export default function MapScreen() {
   const router = useRouter();
   const origin = useLocationStore((s) => s.origin);
   const radiusKm = useLocationStore((s) => s.radiusKm);
+  const setRadiusKm = useLocationStore((s) => s.setRadiusKm);
   const [categorySlug, setCategorySlug] = useState('all');
   const [selectedCluster, setSelectedCluster] = useState<MarkerCluster | null>(null);
 
@@ -64,6 +67,19 @@ export default function MapScreen() {
           contentContainerStyle={{ gap: spacing.xs, paddingHorizontal: spacing.lg }}
           renderItem={({ item }) => (
             <CategoryChip label={item.label} active={categorySlug === item.slug} onPress={() => setCategorySlug(item.slug)} />
+          )}
+        />
+      </View>
+
+      <View style={styles.radiusBar}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={RADIUS_OPTIONS_KM}
+          keyExtractor={(km) => String(km)}
+          contentContainerStyle={{ gap: spacing.xs, paddingHorizontal: spacing.lg }}
+          renderItem={({ item: km }) => (
+            <CategoryChip label={`${km} km`} active={radiusKm === km} onPress={() => setRadiusKm(km)} />
           )}
         />
       </View>
@@ -126,6 +142,7 @@ export default function MapScreen() {
 const styles = StyleSheet.create({
   root: { gap: 0 },
   categoryBar: { paddingVertical: spacing.sm },
+  radiusBar: { paddingBottom: spacing.sm },
   mapWrapper: { flex: 1 },
   loadingOverlay: {
     position: 'absolute',

@@ -18,6 +18,7 @@ const NOTIF_LABELS: Record<string, string> = {
   event_cancelled: 'Fiestas canceladas',
   event_upcoming: 'Recordatorios de eventos próximos',
   capacity_changed: 'Cambios de disponibilidad',
+  event_nearby: 'Fiestas cerca tuyo',
 };
 
 export default function SettingsScreen() {
