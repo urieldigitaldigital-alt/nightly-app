@@ -89,10 +89,13 @@ export default function AppMapWeb({
         zoom,
         pitch,
         bearing,
-        // OpenFreeMap/OSM's license requires attribution to stay somewhere,
-        // but not expanded — compact collapses it to just the "i" icon.
-        attributionControl: { compact: true },
+        // The {compact:true} constructor shorthand doesn't actually collapse
+        // the control on this MapLibre build (verified live — it rendered
+        // the full text bar) — disable the built-in one and add the control
+        // instance directly instead, which does respect `compact`.
+        attributionControl: false,
       });
+      map.addControl(new maplibregl.AttributionControl({ compact: true }));
       map.on('click', (e: any) => callbacksRef.current.onMapPress?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
       map.on('dragstart', (e: any) => { if (e.originalEvent) callbacksRef.current.onUserPanStart?.(); });
       mapRef.current = map;
