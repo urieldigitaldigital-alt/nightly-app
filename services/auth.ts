@@ -55,36 +55,55 @@ export async function signInWithGoogle() {
     // regular Safari tab instead — a popup keeps the standalone window's
     // own location untouched the whole time, which avoids that entirely.
     if (isStandaloneWebApp()) {
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: `${window.location.origin}/`, skipBrowserRedirect: true },
-      });
-      if (error) throw error;
-      if (!data.url) throw new Error('NO_OAUTH_URL');
+      // window.open() must fire synchronously inside the tap's own event
+      // handler or Safari's popup blocker silently kills it — the previous
+      // version awaited signInWithOAuth() first to get the URL, which broke
+      // that chain and blocked the popup outright (login just stopped
+      // working instead of merely losing standalone mode). Opening a blank
+      // popup immediately, then pointing it at the real URL once we have
+      // it, keeps window.open() itself synchronous.
+      const popup = window.open('', 'nightly-google-auth', 'width=480,height=640');
 
-      const popup = window.open(data.url, 'nightly-google-auth', 'width=480,height=640');
-      if (!popup) throw new Error('POPUP_BLOCKED');
+      if (popup) {
+        try {
+          const { data, error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: { redirectTo: `${window.location.origin}/`, skipBrowserRedirect: true },
+          });
+          if (error) throw error;
+          if (!data.url) throw new Error('NO_OAUTH_URL');
+          popup.location.href = data.url;
 
-      await new Promise<void>((resolve) => {
-        const timer = setInterval(() => {
-          if (popup.closed) {
-            clearInterval(timer);
-            resolve();
-          }
-        }, 400);
-        setTimeout(() => {
-          clearInterval(timer);
-          resolve();
-        }, 120000);
-      });
+          await new Promise<void>((resolve) => {
+            const timer = setInterval(() => {
+              if (popup.closed) {
+                clearInterval(timer);
+                resolve();
+              }
+            }, 400);
+            setTimeout(() => {
+              clearInterval(timer);
+              resolve();
+            }, 120000);
+          });
 
-      // The popup loaded our own app at our own origin and wrote the new
-      // session to localStorage itself (see the window.opener self-close
-      // logic in app/_layout.tsx) — supabase-js syncs that across tabs on
-      // its own, but re-check explicitly in case the storage event raced.
-      const { data: sessionData } = await supabase.auth.getSession();
-      if (!sessionData.session) throw new Error('OAUTH_INCOMPLETE');
-      return;
+          // The popup loaded our own app at our own origin and wrote the
+          // new session to localStorage itself (see the window.opener
+          // self-close logic in app/_layout.tsx) — supabase-js syncs that
+          // across tabs on its own, but re-check explicitly in case the
+          // storage event raced.
+          const { data: sessionData } = await supabase.auth.getSession();
+          if (!sessionData.session) throw new Error('OAUTH_INCOMPLETE');
+          return;
+        } catch (e) {
+          if (!popup.closed) popup.close();
+          throw e;
+        }
+      }
+      // Popup blocked outright (not just the earlier timing bug — some
+      // iOS versions may not support window.open from a standalone context
+      // at all) — fall through to the plain redirect below so sign-in
+      // still works, even though it'll cost standalone mode this once.
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
