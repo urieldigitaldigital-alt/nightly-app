@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { colors, spacing, typography } from '@/constants/theme';
 import { fetchProfileByIdOrUsername } from '@/services/profiles';
-import { followUser, isFollowing, unfollowUser } from '@/services/follows';
+import { countFollowers, countFollowing, followUser, isFollowing, unfollowUser } from '@/services/follows';
 import { useAuthStore } from '@/stores/authStore';
 import { supabase } from '@/lib/supabase';
 
@@ -24,6 +24,15 @@ export default function PublicProfileScreen() {
     queryKey: ['public-profile', username],
     queryFn: () => fetchProfileByIdOrUsername(username),
     enabled: Boolean(username),
+  });
+
+  const { data: counts } = useQuery({
+    queryKey: ['follow-counts', profile?.id],
+    queryFn: async () => {
+      const [followers, following] = await Promise.all([countFollowers(profile!.id), countFollowing(profile!.id)]);
+      return { followers, following };
+    },
+    enabled: Boolean(profile?.id),
   });
 
   const { data: organizedEvents } = useQuery({
@@ -82,6 +91,23 @@ export default function PublicProfileScreen() {
           {profile.city && <Badge label={profile.city} tone="neutral" />}
         </View>
 
+        <View style={styles.countsRow}>
+          <Pressable
+            style={styles.countItem}
+            onPress={() => router.push({ pathname: `/profile/${username}/connections`, params: { tab: 'followers' } })}
+          >
+            <Text style={styles.countNumber}>{counts?.followers ?? '—'}</Text>
+            <Text style={styles.countLabel}>Seguidores</Text>
+          </Pressable>
+          <Pressable
+            style={styles.countItem}
+            onPress={() => router.push({ pathname: `/profile/${username}/connections`, params: { tab: 'following' } })}
+          >
+            <Text style={styles.countNumber}>{counts?.following ?? '—'}</Text>
+            <Text style={styles.countLabel}>Siguiendo</Text>
+          </Pressable>
+        </View>
+
         {!isMe && <Button label={following ? 'Siguiendo' : 'Seguir'} variant={following ? 'secondary' : 'primary'} onPress={toggleFollow} fullWidth={false} />}
       </View>
 
@@ -112,6 +138,10 @@ const styles = StyleSheet.create({
   username: { color: colors.textSecondary, fontSize: typography.size.sm },
   bio: { color: colors.textSecondary, fontSize: typography.size.sm, textAlign: 'center', marginTop: spacing.xs },
   badges: { flexDirection: 'row', gap: spacing.xs, marginTop: spacing.sm, marginBottom: spacing.sm },
+  countsRow: { flexDirection: 'row', gap: spacing.xl, marginBottom: spacing.sm },
+  countItem: { alignItems: 'center' },
+  countNumber: { color: colors.textPrimary, fontSize: typography.size.lg, fontWeight: typography.weight.bold },
+  countLabel: { color: colors.textMuted, fontSize: typography.size.xs },
   sectionTitle: { color: colors.textPrimary, fontSize: typography.size.lg, fontWeight: typography.weight.semibold, marginBottom: spacing.sm },
   emptyText: { color: colors.textMuted, fontSize: typography.size.sm },
   eventRow: { backgroundColor: colors.surface, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: spacing.md },

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -18,6 +18,7 @@ import { requestEventAccess, cancelAttendance } from '@/services/requests';
 import { cancelEvent } from '@/services/events';
 import { uploadDniPhoto } from '@/services/storage';
 import { formatEventDateTime, formatPrice } from '@/lib/format';
+import { brand } from '@/constants/brand';
 
 const REQUEST_STATUS_COPY: Record<string, { label: string; tone: 'accent' | 'neutral' | 'warning' | 'danger' }> = {
   pending: { label: 'Solicitud enviada — esperando al organizador', tone: 'warning' },
@@ -57,6 +58,30 @@ export default function EventDetailScreen() {
   const invalidateEvent = () => {
     queryClient.invalidateQueries({ queryKey: ['event-detail', id] });
     queryClient.invalidateQueries({ queryKey: ['events-feed'] });
+  };
+
+  const handleShare = async () => {
+    const shareUrl = `${brand.webUrl}/event/${event.id}`;
+    try {
+      await Share.share({
+        message: `Mirá esta fiesta en NIGHTLY: ${event.title}\n${shareUrl}`,
+        url: shareUrl,
+        title: event.title,
+      });
+    } catch {
+      // Web: navigator.share isn't available in every browser (desktop
+      // Safari/Firefox, some older Chrome), and react-native-web's Share
+      // shim just rejects when it's missing — copying the link is the
+      // universal fallback so the button never just silently does nothing.
+      if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
+        try {
+          await navigator.clipboard.writeText(shareUrl);
+          alert('Copiamos el link de la fiesta al portapapeles.');
+        } catch {
+          // Clipboard access denied too — nothing more we can do silently.
+        }
+      }
+    }
   };
 
   const openDniModal = () => {
@@ -136,7 +161,7 @@ export default function EventDetailScreen() {
         <View style={styles.topBarRight}>
           <Pressable
             style={styles.topBarButton}
-            onPress={() => Share.share({ message: `Mirá esta fiesta en NIGHTLY: ${event.title}` })}
+            onPress={handleShare}
           >
             <Ionicons name="share-outline" size={20} color={colors.white} />
           </Pressable>

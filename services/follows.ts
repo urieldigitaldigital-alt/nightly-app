@@ -38,6 +38,24 @@ export async function listFollowers(profileId: string) {
   return (data ?? []).map((row: any) => (Array.isArray(row.follower) ? row.follower[0] : row.follower));
 }
 
+export async function countFollowers(profileId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('follows')
+    .select('follower_id', { count: 'exact', head: true })
+    .eq('followee_id', profileId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function countFollowing(profileId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from('follows')
+    .select('followee_id', { count: 'exact', head: true })
+    .eq('follower_id', profileId);
+  if (error) throw error;
+  return count ?? 0;
+}
+
 export async function isFollowing(followeeId: string): Promise<boolean> {
   const {
     data: { user },

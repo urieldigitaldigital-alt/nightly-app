@@ -11,6 +11,7 @@ import { WizardHeader } from '@/components/event/WizardHeader';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { LAUNCH_CITIES } from '@/constants/cities';
 import { useCreateEventStore } from '@/stores/createEventStore';
+import { geocodeAddress } from '@/services/geocoding';
 import { VenueType } from '@/types/models';
 
 const VENUE_TYPES: { value: VenueType; label: string }[] = [
@@ -27,6 +28,8 @@ export default function CreateEventStep2() {
   const router = useRouter();
   const { draft, update } = useCreateEventStore();
   const [error, setError] = useState<string | null>(null);
+  const [geocoding, setGeocoding] = useState(false);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
 
   const defaultCity = LAUNCH_CITIES.find((c) => c.name === draft.city) ?? LAUNCH_CITIES[0];
   const pinLat = draft.exactLat ?? defaultCity.lat;
@@ -35,6 +38,28 @@ export default function CreateEventStep2() {
     () => [{ id: 'pin', kind: 'dot', lat: pinLat, lng: pinLng, color: colors.accent, draggable: true }],
     [pinLat, pinLng]
   );
+
+  const handleSearchAddress = async () => {
+    if (!draft.exactAddress.trim()) {
+      setGeocodeError('Escribí una dirección primero.');
+      return;
+    }
+    setGeocoding(true);
+    setGeocodeError(null);
+    try {
+      const query = `${draft.exactAddress}, ${draft.city || defaultCity.name}, Argentina`;
+      const result = await geocodeAddress(query);
+      if (!result) {
+        setGeocodeError('No encontramos esa dirección. Ajustá el punto manualmente en el mapa.');
+        return;
+      }
+      update({ exactLat: result.lat, exactLng: result.lng });
+    } catch {
+      setGeocodeError('No pudimos buscar la dirección. Probá de nuevo o marcá el punto en el mapa.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
 
   const handleNext = () => {
     if (!draft.venueType || !draft.city || !draft.exactAddress.trim() || draft.exactLat == null) {
@@ -81,7 +106,19 @@ export default function CreateEventStep2() {
           </View>
 
           <Input label="Zona / barrio (opcional)" placeholder="Ej: Zona Norte" value={draft.neighborhood} onChangeText={(t) => update({ neighborhood: t })} />
-          <Input label="Dirección exacta" placeholder="Calle y altura" value={draft.exactAddress} onChangeText={(t) => update({ exactAddress: t })} />
+          <View style={styles.addressBlock}>
+            <Input
+              label="Dirección exacta"
+              placeholder="Ej: Cañada 2061"
+              value={draft.exactAddress}
+              onChangeText={(t) => update({ exactAddress: t })}
+            />
+            <Button label="Buscar en el mapa" variant="outline" onPress={handleSearchAddress} loading={geocoding} />
+            {geocodeError ? <Text style={styles.error}>{geocodeError}</Text> : null}
+            <Text style={styles.hint}>
+              Busca la dirección y ubica el punto automáticamente — igual podés ajustarlo a mano después.
+            </Text>
+          </View>
 
           <View>
             <Text style={styles.label}>Marcá el punto exacto</Text>
@@ -110,6 +147,7 @@ export default function CreateEventStep2() {
 
 const styles = StyleSheet.create({
   form: { gap: spacing.md, paddingBottom: spacing.xxl },
+  addressBlock: { gap: spacing.xs },
   label: { color: colors.textSecondary, fontSize: typography.size.sm, fontWeight: typography.weight.medium, marginBottom: spacing.xxs },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   hint: { color: colors.textMuted, fontSize: typography.size.xs, marginTop: spacing.xxs, lineHeight: 16 },

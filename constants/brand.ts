@@ -7,4 +7,7 @@ export const brand = {
   tagline: 'Donde arranca la noche',
   legalName: 'Nightly',
   supportEmail: 'soporte@nightly.app',
+  // Used to build real shareable links (event detail, etc.) — update if the
+  // production domain ever changes.
+  webUrl: 'https://nightly-app-seven.vercel.app',
 } as const;

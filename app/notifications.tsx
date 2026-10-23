@@ -45,8 +45,10 @@ export default function NotificationsScreen() {
   const handlePress = async (n: AppNotification) => {
     await markNotificationRead(n.id);
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    const conversationId = n.data?.conversation_id as string | undefined;
     const eventId = n.data?.event_id as string | undefined;
-    if (eventId) router.push(`/event/${eventId}`);
+    if (conversationId) router.push(`/chat/${conversationId}`);
+    else if (eventId) router.push(`/event/${eventId}`);
   };
 
   return (
