@@ -132,6 +132,9 @@ export default function EventDetailScreen() {
     try {
       await cancelEvent(event.id);
       invalidateEvent();
+      // Nothing useful to do on a cancelled event's own page afterward —
+      // straight back to the feed instead of leaving a dead end.
+      router.replace('/(tabs)/discover');
     } finally {
       setRequesting(false);
     }

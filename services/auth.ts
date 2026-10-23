@@ -38,8 +38,55 @@ export async function signIn(email: string, password: string) {
  * first-time Google signup lands with birthdate_confirmed=false (see
  * 0014_oauth_signup.sql) — app/_layout.tsx's guard sends those users to
  * confirm-birthdate before letting them into the app. */
+/** True when running as an iOS/Android "Add to Home Screen" app rather than
+ * a normal browser tab. `navigator.standalone` is the (non-standard but
+ * only) way iOS Safari exposes this; `display-mode: standalone` is the
+ * cross-platform media query other browsers use. */
+function isStandaloneWebApp(): boolean {
+  if (typeof window === 'undefined') return false;
+  return Boolean((window.navigator as any).standalone) || window.matchMedia?.('(display-mode: standalone)').matches;
+}
+
 export async function signInWithGoogle() {
   if (Platform.OS === 'web') {
+    // A normal full-page redirect to accounts.google.com and back is what
+    // "Add to Home Screen" apps are supposed to handle, but iOS Safari
+    // reliably drops standalone mode and reopens the return trip in a
+    // regular Safari tab instead — a popup keeps the standalone window's
+    // own location untouched the whole time, which avoids that entirely.
+    if (isStandaloneWebApp()) {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: `${window.location.origin}/`, skipBrowserRedirect: true },
+      });
+      if (error) throw error;
+      if (!data.url) throw new Error('NO_OAUTH_URL');
+
+      const popup = window.open(data.url, 'nightly-google-auth', 'width=480,height=640');
+      if (!popup) throw new Error('POPUP_BLOCKED');
+
+      await new Promise<void>((resolve) => {
+        const timer = setInterval(() => {
+          if (popup.closed) {
+            clearInterval(timer);
+            resolve();
+          }
+        }, 400);
+        setTimeout(() => {
+          clearInterval(timer);
+          resolve();
+        }, 120000);
+      });
+
+      // The popup loaded our own app at our own origin and wrote the new
+      // session to localStorage itself (see the window.opener self-close
+      // logic in app/_layout.tsx) — supabase-js syncs that across tabs on
+      // its own, but re-check explicitly in case the storage event raced.
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) throw new Error('OAUTH_INCOMPLETE');
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       // Trailing slash so this matches a `<site>/**` entry in Supabase's

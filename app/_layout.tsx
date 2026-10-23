@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
+import { Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -29,6 +30,18 @@ export default function RootLayout() {
   }, [initialize]);
 
   usePushNotifications(Boolean(session) && onboardingCompleted);
+
+  // Closes the popup opened by signInWithGoogle()'s standalone-mode path
+  // (services/auth.ts) once it's loaded this same app at this same origin
+  // and picked up a session — otherwise the user would be staring at the
+  // whole app rendered a second time inside a small popup window with
+  // nothing telling them to close it themselves.
+  useEffect(() => {
+    if (Platform.OS !== 'web' || !session) return;
+    if (typeof window !== 'undefined' && window.opener) {
+      window.close();
+    }
+  }, [session]);
 
   useEffect(() => {
     if (!loading && !appReady) {
@@ -64,24 +77,37 @@ export default function RootLayout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <QueryClientProvider client={queryClient}>
-          <StatusBar style="light" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="(auth)" />
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen name="event/[id]/index" options={{ presentation: 'card' }} />
-            <Stack.Screen name="event/create" options={{ presentation: 'modal' }} />
-            <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
-          </Stack>
-        </QueryClientProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+    // On a wide browser window the mobile-first layouts here stretch edge
+    // to edge and everything (absolute-positioned icons, full-width
+    // buttons) ends up misaligned and oversized — capping the app at a
+    // phone-sized column and centering it keeps it looking like a real app
+    // on web regardless of window width. Native screens are already
+    // narrower than this cap, so it's a no-op there except on tablets.
+    <View style={styles.webBackdrop}>
+      <GestureHandlerRootView style={styles.webFrame}>
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <StatusBar style="light" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            >
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="event/[id]/index" options={{ presentation: 'card' }} />
+              <Stack.Screen name="event/create" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
+            </Stack>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  webBackdrop: { flex: 1, alignItems: 'center', backgroundColor: colors.background },
+  webFrame: { flex: 1, width: '100%', maxWidth: 480 },
+});

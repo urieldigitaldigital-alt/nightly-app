@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -29,7 +29,13 @@ const SLIDES = [
 
 export default function WelcomeScreen() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  // Not useWindowDimensions(): that reports the raw browser window size,
+  // but app/_layout.tsx now caps the app itself at a narrower centered
+  // column on web — slides sized to the full window overflowed past the
+  // actual visible frame. Measuring this view's own rendered width instead
+  // is correct regardless of any ancestor's width constraint.
+  const [width, setWidth] = useState(0);
+  const onFrameLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const [activeIndex, setActiveIndex] = useState(0);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
@@ -69,23 +75,25 @@ export default function WelcomeScreen() {
         <Text style={styles.brandName}>{brand.name}</Text>
       </View>
 
-      <ScrollView
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-      >
-        {SLIDES.map((slide) => (
-          <View key={slide.title} style={[styles.slide, { width }]}>
-            <View style={styles.iconWrapper}>
-              <Ionicons name={slide.icon} size={52} color={colors.accent} />
+      <View style={styles.carouselFrame} onLayout={onFrameLayout}>
+        <ScrollView
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={16}
+        >
+          {SLIDES.map((slide) => (
+            <View key={slide.title} style={[styles.slide, { width }]}>
+              <View style={styles.iconWrapper}>
+                <Ionicons name={slide.icon} size={52} color={colors.accent} />
+              </View>
+              <Text style={styles.title}>{slide.title}</Text>
+              <Text style={styles.body}>{slide.body}</Text>
             </View>
-            <Text style={styles.title}>{slide.title}</Text>
-            <Text style={styles.body}>{slide.body}</Text>
-          </View>
-        ))}
-      </ScrollView>
+          ))}
+        </ScrollView>
+      </View>
 
       <View style={styles.dots}>
         {SLIDES.map((slide, i) => (
@@ -115,6 +123,7 @@ export default function WelcomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  carouselFrame: { flex: 1 },
   brandRow: {
     flexDirection: 'row',
     alignItems: 'center',

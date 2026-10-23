@@ -48,6 +48,9 @@ export default function NotificationsScreen() {
     const conversationId = n.data?.conversation_id as string | undefined;
     const eventId = n.data?.event_id as string | undefined;
     if (conversationId) router.push(`/chat/${conversationId}`);
+    // Go straight to the requests list, not the event page first — the
+    // whole point of tapping this is to review/accept the request itself.
+    else if (eventId && n.type === 'new_request') router.push(`/event/${eventId}/requests`);
     else if (eventId) router.push(`/event/${eventId}`);
   };
 
