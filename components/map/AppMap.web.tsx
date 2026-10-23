@@ -97,11 +97,24 @@ export default function AppMapWeb({
       });
       map.addControl(new maplibregl.AttributionControl({ compact: true }));
       // Compact mode renders a <details open> element, which starts
-      // expanded — also verified live. Collapsing it is just removing that
-      // attribute; MapLibre's own toggle (the "i" button) re-opens it fine
-      // from here since that's a plain details/summary disclosure.
+      // expanded — also verified live. MapLibre re-asserts `open`
+      // asynchronously more than once during startup (a one-shot removal
+      // right after addControl, or even on the map's `load` event, didn't
+      // reliably stick) — a MutationObserver that strips it back off every
+      // time it reappears is the only thing that held up on a fresh load.
       const attribEl = containerRef.current.querySelector('.maplibregl-ctrl-attrib');
-      attribEl?.removeAttribute('open');
+      let attribObserver: MutationObserver | undefined;
+      if (attribEl) {
+        attribEl.removeAttribute('open');
+        attribObserver = new MutationObserver(() => {
+          if (attribEl.hasAttribute('open')) attribEl.removeAttribute('open');
+        });
+        attribObserver.observe(attribEl, { attributes: true, attributeFilter: ['open'] });
+        // Only fighting MapLibre's own startup re-opens here, not blocking
+        // the user from ever tapping the "i" to expand it themselves — stop
+        // policing the attribute once initial load has settled.
+        map.once('idle', () => attribObserver?.disconnect());
+      }
       map.on('click', (e: any) => callbacksRef.current.onMapPress?.({ lat: e.lngLat.lat, lng: e.lngLat.lng }));
       map.on('dragstart', (e: any) => { if (e.originalEvent) callbacksRef.current.onUserPanStart?.(); });
       mapRef.current = map;

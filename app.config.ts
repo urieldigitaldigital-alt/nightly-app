@@ -38,6 +38,14 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   web: {
     favicon: './assets/favicon.png',
     bundler: 'metro',
+    // Lets "Add to Home Screen" on Android/Chrome open without browser
+    // chrome too — iOS Safari needs the apple-mobile-web-app-capable meta
+    // tag in app/+html.tsx instead, since it ignores this manifest field.
+    name: 'NIGHTLY',
+    shortName: 'NIGHTLY',
+    display: 'standalone',
+    themeColor: '#080808',
+    backgroundColor: '#080808',
   },
   plugins: [
     '@react-native-community/datetimepicker',
