@@ -62,7 +62,11 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>Más</Text>
         <View style={styles.card}>
-          <Pressable style={styles.row} onPress={() => router.push('/settings/privacy')}>
+          <Pressable style={styles.row} onPress={() => router.push('/settings/change-password')}>
+            <Text style={styles.rowLabel}>Cambiar contraseña</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
+          <Pressable style={[styles.row, styles.rowBorder]} onPress={() => router.push('/settings/privacy')}>
             <Text style={styles.rowLabel}>Privacidad y seguridad</Text>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </Pressable>

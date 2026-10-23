@@ -14,7 +14,7 @@ import { MUSIC_GENRES } from '@/constants/musicGenres';
 import { useAuthStore } from '@/stores/authStore';
 import { updateMyProfile } from '@/services/profiles';
 import { uploadAvatar } from '@/services/storage';
-import { requestAccountDeletion } from '@/services/auth';
+import { requestAccountDeletion, signOut } from '@/services/auth';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -28,6 +28,7 @@ export default function EditProfileScreen() {
   const [interests, setInterests] = useState<string[]>(profile?.musicInterests ?? []);
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const toggleGenre = (genre: string) => {
     setInterests((prev) => (prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]));
@@ -63,7 +64,18 @@ export default function EditProfileScreen() {
           text: 'Eliminar',
           style: 'destructive',
           onPress: async () => {
-            await requestAccountDeletion();
+            setDeleting(true);
+            try {
+              await requestAccountDeletion();
+              // The account is gone server-side; signOut() just clears the
+              // now-dangling local session so app/_layout.tsx's guard sends
+              // us to welcome instead of leaving the app stuck mid-screen.
+              await signOut();
+            } catch (e: any) {
+              Alert.alert('No pudimos eliminar tu cuenta', 'Probá de nuevo en unos minutos.');
+            } finally {
+              setDeleting(false);
+            }
           },
         },
       ]
@@ -108,8 +120,8 @@ export default function EditProfileScreen() {
 
           <Button label="Guardar cambios" onPress={handleSave} loading={loading} />
 
-          <Pressable style={styles.deleteRow} onPress={handleDeleteAccount}>
-            <Text style={styles.deleteText}>Eliminar mi cuenta</Text>
+          <Pressable style={styles.deleteRow} onPress={handleDeleteAccount} disabled={deleting}>
+            <Text style={styles.deleteText}>{deleting ? 'Eliminando...' : 'Eliminar mi cuenta'}</Text>
           </Pressable>
         </View>
       </ScrollView>
