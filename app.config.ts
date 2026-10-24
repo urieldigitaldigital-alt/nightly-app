@@ -52,7 +52,15 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     'expo-web-browser',
     'expo-router',
     'expo-font',
-    'expo-splash-screen',
+    [
+      'expo-splash-screen',
+      {
+        image: './assets/splash-icon.png',
+        imageWidth: 180,
+        resizeMode: 'contain',
+        backgroundColor: '#080808',
+      },
+    ],
     'expo-image',
     'expo-secure-store',
     [

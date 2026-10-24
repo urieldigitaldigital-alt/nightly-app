@@ -19,6 +19,7 @@ export default function PublicProfileScreen() {
   const router = useRouter();
   const myProfile = useAuthStore((s) => s.profile);
   const [following, setFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['public-profile', username],
@@ -59,12 +60,18 @@ export default function PublicProfileScreen() {
   const isMe = myProfile?.id === profile.id;
 
   const toggleFollow = async () => {
-    if (following) {
-      await unfollowUser(profile.id);
-      setFollowing(false);
-    } else {
-      await followUser(profile.id);
-      setFollowing(true);
+    if (followLoading) return;
+    setFollowLoading(true);
+    try {
+      if (following) {
+        await unfollowUser(profile.id);
+        setFollowing(false);
+      } else {
+        await followUser(profile.id);
+        setFollowing(true);
+      }
+    } finally {
+      setFollowLoading(false);
     }
   };
 
@@ -108,7 +115,15 @@ export default function PublicProfileScreen() {
           </Pressable>
         </View>
 
-        {!isMe && <Button label={following ? 'Siguiendo' : 'Seguir'} variant={following ? 'secondary' : 'primary'} onPress={toggleFollow} fullWidth={false} />}
+        {!isMe && (
+          <Button
+            label={following ? 'Siguiendo' : 'Seguir'}
+            variant={following ? 'secondary' : 'primary'}
+            onPress={toggleFollow}
+            loading={followLoading}
+            fullWidth={false}
+          />
+        )}
       </View>
 
       <Text style={styles.sectionTitle}>Fiestas publicadas</Text>

@@ -44,9 +44,10 @@ export default function SavedScreen() {
           data={events}
           keyExtractor={(e) => e.id}
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <EventCard
               event={item}
+              index={index}
               saved
               onPress={() => router.push(`/event/${item.id}`)}
               onToggleSave={() =>

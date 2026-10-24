@@ -62,6 +62,7 @@ export default function TrendingScreen() {
                 )}
                 <EventCard
                   event={item}
+                  index={index}
                   saved={savedSet.has(item.id)}
                   onPress={() => router.push(`/event/${item.id}`)}
                   onToggleSave={() => toggleSave.mutate({ eventId: item.id, nextSaved: !savedSet.has(item.id) })}

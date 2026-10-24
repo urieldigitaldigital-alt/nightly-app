@@ -80,6 +80,12 @@ export default function RootLayout() {
               screenOptions={{
                 headerShown: false,
                 contentStyle: { backgroundColor: colors.background },
+                // iOS-style slide-in-from-the-right with the reverse on
+                // back — react-native-screens' native-stack already does
+                // this on iOS/Android by default, this just makes it
+                // explicit and asks for it on web too (where there was no
+                // transition at all otherwise).
+                animation: 'slide_from_right',
               }}
             >
               <Stack.Screen name="(auth)" />

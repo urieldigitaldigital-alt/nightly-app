@@ -1,6 +1,9 @@
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { colors, durations, radii, spacing, typography } from '@/constants/theme';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import { colors, radii, spacing, typography } from '@/constants/theme';
+import { motion } from '@/constants/motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 
 type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
 type Size = 'md' | 'lg';
@@ -15,9 +18,25 @@ type Props = {
   icon?: React.ReactNode;
   fullWidth?: boolean;
   testID?: string;
+  /** Light haptic on press — on by default for the two "important action"
+   * variants, off for secondary/outline/ghost so every tap in the app
+   * doesn't buzz. */
+  haptic?: boolean;
 };
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+function fireHaptic() {
+  if (Platform.OS === 'web') {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(10);
+      } catch {}
+    }
+    return;
+  }
+  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+}
 
 export function Button({
   label,
@@ -29,9 +48,11 @@ export function Button({
   icon,
   fullWidth = true,
   testID,
+  haptic = variant === 'primary' || variant === 'danger',
 }: Props) {
   const scale = useSharedValue(1);
   const isDisabled = disabled || loading;
+  const reducedMotion = useReducedMotion();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -42,10 +63,12 @@ export function Button({
       testID={testID}
       onPress={isDisabled ? undefined : onPress}
       onPressIn={() => {
-        scale.value = withTiming(0.97, { duration: durations.fast });
+        if (reducedMotion) return;
+        scale.value = withTiming(motion.pressScale, { duration: motion.pressDuration, easing: motion.moveEasing });
+        if (haptic) fireHaptic();
       }}
       onPressOut={() => {
-        scale.value = withTiming(1, { duration: durations.fast });
+        scale.value = reducedMotion ? 1 : withSpring(1, motion.releaseSpring);
       }}
       style={[
         animatedStyle,

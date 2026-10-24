@@ -1,8 +1,10 @@
 import { Image } from 'expo-image';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn } from 'react-native-reanimated';
+import Animated, { FadeInDown, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii, spacing, typography } from '@/constants/theme';
+import { motion } from '@/constants/motion';
+import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { EventSummary } from '@/types/models';
 import { formatDistance, formatEventDateTime } from '@/lib/format';
 import { Badge } from '@/components/ui/Badge';
@@ -12,9 +14,20 @@ type Props = {
   saved?: boolean;
   onPress: () => void;
   onToggleSave: () => void;
+  /** Position in the list — staggers the entrance animation so cards cascade
+   * in instead of popping together, capped so a long list's bottom items
+   * don't wait seconds to appear. */
+  index?: number;
 };
 
-export function EventCard({ event, saved = false, onPress, onToggleSave }: Props) {
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+
+export function EventCard({ event, saved = false, onPress, onToggleSave, index = 0 }: Props) {
+  const reducedMotion = useReducedMotion();
+  const scale = useSharedValue(1);
+  const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const delay = Math.min(index, motion.staggerCap) * motion.staggerStep;
+
   const spotsLabel =
     event.spotsLeft !== null
       ? event.spotsLeft <= 0
@@ -25,8 +38,17 @@ export function EventCard({ event, saved = false, onPress, onToggleSave }: Props
       : null;
 
   return (
-    <Animated.View entering={FadeIn.duration(220)}>
-      <Pressable onPress={onPress} style={styles.card} accessibilityRole="button">
+    <Animated.View entering={reducedMotion ? undefined : FadeInDown.duration(280).delay(delay).easing(motion.moveEasing)}>
+      <AnimatedPressable
+        onPress={onPress}
+        onPressIn={() => {
+          if (!reducedMotion) scale.value = withTiming(motion.pressScale, { duration: motion.pressDuration, easing: motion.moveEasing });
+        }}
+        onPressOut={() => {
+          scale.value = reducedMotion ? 1 : withSpring(1, motion.releaseSpring);
+        }}
+        style={[styles.card, cardStyle]}
+        accessibilityRole="button">
         <View style={styles.imageWrapper}>
           {event.coverImageUrl ? (
             <Image source={{ uri: event.coverImageUrl }} style={styles.image} contentFit="cover" transition={200} />
@@ -82,7 +104,7 @@ export function EventCard({ event, saved = false, onPress, onToggleSave }: Props
             {event.accessMode === 'request' && <Badge label="Requiere aprobación" tone="neutral" />}
           </View>
         </View>
-      </Pressable>
+      </AnimatedPressable>
     </Animated.View>
   );
 }

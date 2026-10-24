@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
+import { Platform, StyleSheet, Text, TextInput, TextInputProps, View } from 'react-native';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 
 type Props = TextInputProps & {
@@ -63,7 +63,10 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     color: colors.textPrimary,
-    fontSize: typography.size.md,
+    // Below 16px, iOS Safari auto-zooms the whole page on focus — native
+    // doesn't have that quirk, so only bump it on web to keep the native
+    // type scale unchanged.
+    fontSize: Platform.OS === 'web' ? 16 : typography.size.md,
     paddingVertical: spacing.sm + 2,
   },
   errorText: {

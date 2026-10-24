@@ -7,6 +7,7 @@ import { CategoryChip } from '@/components/ui/CategoryChip';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EventCard } from '@/components/event/EventCard';
+import { EventCardSkeleton } from '@/components/event/EventCardSkeleton';
 import { LocationSheet } from '@/components/LocationSheet';
 import { colors, spacing, typography } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';
@@ -81,7 +82,13 @@ export default function DiscoverScreen() {
       </View>
 
       {feed.isLoading ? (
-        <LoadingState fullscreen />
+        <View style={styles.feedList}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={i > 0 && { marginTop: spacing.md }}>
+              <EventCardSkeleton />
+            </View>
+          ))}
+        </View>
       ) : feed.isError ? (
         <EmptyState
           icon={<Ionicons name="warning-outline" size={40} color={colors.danger} />}
@@ -116,9 +123,10 @@ export default function DiscoverScreen() {
           onEndReached={() => {
             if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
           }}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <EventCard
               event={item}
+              index={index}
               saved={savedSet.has(item.id)}
               onPress={() => router.push(`/event/${item.id}`)}
               onToggleSave={() => toggleSave.mutate({ eventId: item.id, nextSaved: !savedSet.has(item.id) })}

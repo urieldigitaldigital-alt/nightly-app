@@ -56,7 +56,8 @@ const webInputStyle: React.CSSProperties = {
   border: 'none',
   outline: 'none',
   color: colors.textPrimary,
-  fontSize: typography.size.md,
+  // Below 16px, iOS Safari auto-zooms the whole page on focus.
+  fontSize: 16,
   colorScheme: 'dark',
   fontFamily: 'inherit',
 };

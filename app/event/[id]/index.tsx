@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -8,7 +8,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { LoadingState } from '@/components/ui/LoadingState';
+import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
+import { EventDetailSkeleton } from '@/components/event/EventDetailSkeleton';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useEventDetail } from '@/hooks/useEventDetail';
@@ -42,7 +43,7 @@ export default function EventDetailScreen() {
   const [dniPhotoUri, setDniPhotoUri] = useState<string | null>(null);
   const [dniError, setDniError] = useState<string | null>(null);
 
-  if (isLoading) return <LoadingState fullscreen />;
+  if (isLoading) return <EventDetailSkeleton />;
   if (isError || !event) {
     return (
       <Screen padded>
@@ -287,33 +288,31 @@ export default function EventDetailScreen() {
         </View>
       </View>
 
-      <Modal visible={showDniModal} transparent animationType="slide" onRequestClose={() => setShowDniModal(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Subí una foto de tu DNI</Text>
-            <Text style={styles.modalBody}>
-              Solo la ve el organizador para confirmar que sos vos, y se borra automáticamente a los pocos días de
-              terminada la fiesta.
-            </Text>
+      <BottomSheetModal visible={showDniModal} onClose={() => setShowDniModal(false)}>
+        <View style={styles.modalCard}>
+          <Text style={styles.modalTitle}>Subí una foto de tu DNI</Text>
+          <Text style={styles.modalBody}>
+            Solo la ve el organizador para confirmar que sos vos, y se borra automáticamente a los pocos días de
+            terminada la fiesta.
+          </Text>
 
-            <Pressable style={styles.dniPicker} onPress={handlePickDniPhoto}>
-              {dniPhotoUri ? (
-                <Image source={{ uri: dniPhotoUri }} style={styles.dniPreview} contentFit="cover" />
-              ) : (
-                <>
-                  <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
-                  <Text style={styles.dniPickerText}>Elegir foto</Text>
-                </>
-              )}
-            </Pressable>
+          <Pressable style={styles.dniPicker} onPress={handlePickDniPhoto}>
+            {dniPhotoUri ? (
+              <Image source={{ uri: dniPhotoUri }} style={styles.dniPreview} contentFit="cover" />
+            ) : (
+              <>
+                <Ionicons name="camera-outline" size={28} color={colors.textMuted} />
+                <Text style={styles.dniPickerText}>Elegir foto</Text>
+              </>
+            )}
+          </Pressable>
 
-            {dniError ? <Text style={styles.error}>{dniError}</Text> : null}
+          {dniError ? <Text style={styles.error}>{dniError}</Text> : null}
 
-            <Button label="Enviar solicitud" onPress={handleSubmitRequestWithDni} loading={requesting} disabled={!dniPhotoUri} />
-            <Button label="Cancelar" variant="outline" onPress={() => setShowDniModal(false)} />
-          </View>
+          <Button label="Enviar solicitud" onPress={handleSubmitRequestWithDni} loading={requesting} disabled={!dniPhotoUri} />
+          <Button label="Cancelar" variant="outline" onPress={() => setShowDniModal(false)} />
         </View>
-      </Modal>
+      </BottomSheetModal>
     </Screen>
   );
 }
@@ -391,13 +390,11 @@ const styles = StyleSheet.create({
   entryCodeLabel: { color: colors.textSecondary, fontSize: typography.size.sm },
   entryCodeValue: { color: colors.accent, fontSize: typography.size.xxl, fontWeight: typography.weight.bold, letterSpacing: 2 },
   entryCodeHint: { color: colors.textMuted, fontSize: typography.size.xs },
-  modalOverlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end' },
   modalCard: {
-    backgroundColor: colors.surface,
-    borderTopLeftRadius: radii.xl,
-    borderTopRightRadius: radii.xl,
-    padding: spacing.lg,
+    // Background/rounded-top/padding now come from BottomSheetModal's own
+    // sheet chrome — this just lays out the content inside it.
     gap: spacing.md,
+    paddingBottom: spacing.sm,
   },
   modalTitle: { color: colors.textPrimary, fontSize: typography.size.lg, fontWeight: typography.weight.bold },
   modalBody: { color: colors.textSecondary, fontSize: typography.size.sm, lineHeight: 20 },
