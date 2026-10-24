@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Modal, Platform, Pressable, Share, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Modal, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -145,44 +145,28 @@ export default function EventDetailScreen() {
 
   return (
     <Screen edges={['bottom']}>
-      <FlatList
-        data={event.images.length > 0 ? event.images : event.coverImageUrl ? [{ id: 'cover', url: event.coverImageUrl, sortOrder: 0 }] : []}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        keyExtractor={(img) => img.id}
-        style={styles.gallery}
-        renderItem={({ item }) => <Image source={{ uri: item.url }} style={styles.galleryImage} contentFit="cover" />}
-        ListEmptyComponent={<View style={[styles.galleryImage, styles.galleryFallback]} />}
-        ListHeaderComponent={undefined}
-      />
+      <ScrollView
+        style={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        bounces
+        // Keeps the gallery image sharp during the iOS rubber-band
+        // overshoot instead of visibly tearing/pixelating like plain
+        // "clamp" does — the same trick native apps use on hero images.
+        decelerationRate="normal"
+      >
+        <FlatList
+          data={event.images.length > 0 ? event.images : event.coverImageUrl ? [{ id: 'cover', url: event.coverImageUrl, sortOrder: 0 }] : []}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(img) => img.id}
+          style={styles.gallery}
+          renderItem={({ item }) => <Image source={{ uri: item.url }} style={styles.galleryImage} contentFit="cover" />}
+          ListEmptyComponent={<View style={[styles.galleryImage, styles.galleryFallback]} />}
+          ListHeaderComponent={undefined}
+        />
 
-      <View style={styles.topBar}>
-        <Pressable style={styles.topBarButton} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={20} color={colors.white} />
-        </Pressable>
-        <View style={styles.topBarRight}>
-          <Pressable
-            style={styles.topBarButton}
-            onPress={handleShare}
-          >
-            <Ionicons name="share-outline" size={20} color={colors.white} />
-          </Pressable>
-          <Pressable style={styles.topBarButton} onPress={() => toggleSave.mutate({ eventId: event.id, nextSaved: !event.isSaved })}>
-            <Ionicons name={event.isSaved ? 'bookmark' : 'bookmark-outline'} size={20} color={colors.white} />
-          </Pressable>
-          {!isOrganizer && (
-            <Pressable
-              style={styles.topBarButton}
-              onPress={() => router.push({ pathname: '/report', params: { targetType: 'event', targetId: event.id } })}
-            >
-              <Ionicons name="flag-outline" size={20} color={colors.white} />
-            </Pressable>
-          )}
-        </View>
-      </View>
-
-      <View style={styles.body}>
+        <View style={styles.body}>
         <View style={styles.titleRow}>
           <Text style={styles.title}>{event.title}</Text>
           <Text style={styles.price}>{formatPrice(event.priceCents, event.isFree)}</Text>
@@ -271,6 +255,36 @@ export default function EventDetailScreen() {
             </>
           )}
         </View>
+        </View>
+      </ScrollView>
+
+      {/* Sibling of the ScrollView (not inside it) so it reads as a fixed
+          overlay bar instead of scrolling away with the content —
+          box-none lets taps/scroll gestures pass through the empty gap
+          between the two button clusters down to the gallery underneath. */}
+      <View style={styles.topBar} pointerEvents="box-none">
+        <Pressable style={styles.topBarButton} onPress={() => router.back()}>
+          <Ionicons name="chevron-back" size={20} color={colors.white} />
+        </Pressable>
+        <View style={styles.topBarRight}>
+          <Pressable
+            style={styles.topBarButton}
+            onPress={handleShare}
+          >
+            <Ionicons name="share-outline" size={20} color={colors.white} />
+          </Pressable>
+          <Pressable style={styles.topBarButton} onPress={() => toggleSave.mutate({ eventId: event.id, nextSaved: !event.isSaved })}>
+            <Ionicons name={event.isSaved ? 'bookmark' : 'bookmark-outline'} size={20} color={colors.white} />
+          </Pressable>
+          {!isOrganizer && (
+            <Pressable
+              style={styles.topBarButton}
+              onPress={() => router.push({ pathname: '/report', params: { targetType: 'event', targetId: event.id } })}
+            >
+              <Ionicons name="flag-outline" size={20} color={colors.white} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
       <Modal visible={showDniModal} transparent animationType="slide" onRequestClose={() => setShowDniModal(false)}>
@@ -325,6 +339,7 @@ function translateRequestError(message?: string): string {
 }
 
 const styles = StyleSheet.create({
+  scroll: { flex: 1 },
   gallery: { height: 260 },
   galleryImage: { width: 390, height: 260 },
   galleryFallback: { backgroundColor: colors.surfaceRaised, width: '100%' },
