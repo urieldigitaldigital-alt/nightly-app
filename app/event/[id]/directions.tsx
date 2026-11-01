@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { haversineMeters, projectOntoPolyline } from '@/lib/geo';
 import { useEventDetail } from '@/hooks/useEventDetail';
+import { useAuthStore } from '@/stores/authStore';
 import { useLocationStore } from '@/stores/locationStore';
 import { fetchDrivingDirections, DirectionsResult, RouteStep, TravelMode } from '@/services/directions';
 import { decodePolyline } from '@/lib/polyline';
@@ -61,9 +62,9 @@ export default function DirectionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: event, isLoading } = useEventDetail(id);
+  const myProfile = useAuthStore((s) => s.profile);
   const fallbackOrigin = useLocationStore((s) => s.origin);
   const [userCoords, setUserCoords] = useState<LatLng | null>(null);
-  const [heading, setHeading] = useState<number | null>(null);
   const [directions, setDirections] = useState<DirectionsResult | null>(null);
   const [loadingDirections, setLoadingDirections] = useState(false);
   const [isFollowing, setIsFollowing] = useState(true);
@@ -159,7 +160,6 @@ export default function DirectionsScreen() {
           if (validHeading != null) lastBearingRef.current = validHeading;
 
           setUserCoords(coords);
-          setHeading(validHeading);
 
           let maneuverDist: number | null = null;
           if (navStateRef.current === 'navigating') {
@@ -289,9 +289,13 @@ export default function DirectionsScreen() {
       : fullRouteCoords;
 
   const view = viewState ?? { center: userCoords, zoom: FOLLOW_ZOOM, pitch: FOLLOW_PITCH, bearing: lastBearingRef.current };
+  // Real photos instead of plain colored dots — your own profile photo for
+  // "me", the event's cover photo for the destination. The camera itself
+  // already rotates to follow heading during navigation (course-up), so a
+  // separately-rotating arrow glyph on the marker would just be redundant.
   const mapMarkers: MapMarkerSpec[] = [
-    { id: 'me', kind: 'dot', lat: userCoords.lat, lng: userCoords.lng, color: colors.accent, heading: heading ?? undefined },
-    { id: 'dest', kind: 'dot', lat: event.exactLat!, lng: event.exactLng!, color: colors.textSecondary },
+    { id: 'me', kind: 'photo', lat: userCoords.lat, lng: userCoords.lng, photoUrl: myProfile?.avatarUrl },
+    { id: 'dest', kind: 'photo', lat: event.exactLat!, lng: event.exactLng!, photoUrl: event.coverImageUrl },
   ];
 
   const currentStep = navState === 'navigating' ? steps[stepIndex] : undefined;
@@ -338,9 +342,13 @@ export default function DirectionsScreen() {
           </Animated.View>
         )}
 
-        {navState === 'navigating' && (
+        {navState === 'navigating' ? (
           <Pressable style={styles.exitButton} onPress={handleExitNavigation} hitSlop={10}>
             <Ionicons name="close" size={20} color={colors.textPrimary} />
+          </Pressable>
+        ) : (
+          <Pressable style={styles.backButton} onPress={() => router.back()} hitSlop={10}>
+            <Ionicons name="chevron-back" size={22} color={colors.textPrimary} />
           </Pressable>
         )}
 
@@ -442,6 +450,22 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: spacing.lg,
     right: spacing.lg,
+    width: 36,
+    height: 36,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  backButton: {
+    position: 'absolute',
+    top: spacing.lg,
+    left: spacing.lg,
     width: 36,
     height: 36,
     borderRadius: radii.pill,

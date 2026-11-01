@@ -23,9 +23,12 @@ Nada de esto lo puede hacer el código por sí solo (credenciales, cuentas de te
 
 - [ ] **No implementado todavía, a propósito.** Revocar el acceso en el lado de Apple cuando alguien elimina su cuenta requiere: el archivo `.p8` de la Key de Apple (el mismo de la sección anterior), el Team ID y el Key ID, para firmar un JWT y llamar al endpoint de revocación de Apple desde `supabase/functions/delete-account/index.ts`. Eliminar la cuenta en Supabase ya funciona igual sin esto (el usuario pierde el acceso a la app), solo falta notificarle a Apple que el permiso fue revocado. Decime cuando tengas las credenciales de la sección anterior y lo agrego — es un cambio chico una vez que exista el `.p8`.
 
-## Fase 1 — Migración de base de datos pendiente
+## Migraciones de base de datos pendientes
 
-- [ ] Correr `supabase/migrations/0019_hide_blocked_from_discovery.sql` en el **SQL Editor del dashboard de Supabase** (Database → SQL Editor → pegar el contenido del archivo → Run). No tengo una conexión directa a tu base de datos desde acá, así que cada migración nueva que vaya agregando en las próximas fases la vas a tener que correr vos de la misma forma — te voy a avisar el nombre exacto del archivo cada vez.
+No tengo una conexión directa a tu base de datos desde acá — cada migración nueva la tenés que correr vos en el **SQL Editor del dashboard de Supabase** (Database → SQL Editor → pegar el contenido del archivo → Run), en este orden:
+
+- [ ] `supabase/migrations/0019_hide_blocked_from_discovery.sql` — bloquear a alguien oculta su perfil/eventos.
+- [ ] `supabase/migrations/0020_expire_finished_events.sql` — las fiestas se marcan "finalizadas" automáticamente apenas pasa su hora de fin (o 6 horas después de empezar si no pusiste hora de fin), y dejan de aparecer en el mapa/feed en ese momento. Corre cada 10 minutos.
 
 ## Fase 4 — Email
 
@@ -41,4 +44,4 @@ Nada de esto lo puede hacer el código por sí solo (credenciales, cuentas de te
 - [ ] Correr `eas submit` (o subirlo manualmente desde Xcode/Transporter) cuando el build esté listo — este paso final de envío lo hacés vos, yo dejo todo preparado para que sea un solo comando.
 
 ---
-*Última actualización: Fase 1.*
+*Última actualización: pasada de correcciones post-Fase 1.*

@@ -9,7 +9,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { signOut } from '@/services/auth';
 
 const MENU_ITEMS: { icon: keyof typeof Ionicons.glyphMap; label: string; href: string }[] = [
-  { icon: 'bookmark-outline', label: 'Guardados', href: '/saved' },
   { icon: 'calendar-outline', label: 'Mis planes', href: '/my-plans' },
   { icon: 'sparkles-outline', label: 'Mis fiestas', href: '/my-events' },
   { icon: 'people-outline', label: 'Amigos', href: '/friends' },

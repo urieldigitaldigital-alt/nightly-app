@@ -14,7 +14,6 @@ import { useAuthStore } from '@/stores/authStore';
 import { useLocationStore } from '@/stores/locationStore';
 import { useCategories } from '@/hooks/useCategories';
 import { useEventsFeed } from '@/hooks/useEventsFeed';
-import { useSavedEventIds, useToggleSaveEvent } from '@/hooks/useSavedEvents';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function DiscoverScreen() {
@@ -26,12 +25,9 @@ export default function DiscoverScreen() {
   const [locationSheetOpen, setLocationSheetOpen] = useState(false);
 
   const { categories } = useCategories();
-  const savedIds = useSavedEventIds();
-  const toggleSave = useToggleSaveEvent();
 
   const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm, categorySlug });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
-  const savedSet = useMemo(() => new Set(savedIds.data ?? []), [savedIds.data]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -123,15 +119,7 @@ export default function DiscoverScreen() {
           onEndReached={() => {
             if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
           }}
-          renderItem={({ item, index }) => (
-            <EventCard
-              event={item}
-              index={index}
-              saved={savedSet.has(item.id)}
-              onPress={() => router.push(`/event/${item.id}`)}
-              onToggleSave={() => toggleSave.mutate({ eventId: item.id, nextSaved: !savedSet.has(item.id) })}
-            />
-          )}
+          renderItem={({ item, index }) => <EventCard event={item} index={index} onPress={() => router.push(`/event/${item.id}`)} />}
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
           ListFooterComponent={feed.isFetchingNextPage ? <LoadingState /> : undefined}
         />

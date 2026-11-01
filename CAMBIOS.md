@@ -36,5 +36,23 @@ Resumen por fase de todo lo agregado, modificado y eliminado rumbo al envío a r
 
 **Pendiente de tu parte** (ver `PENDIENTES_MANUALES.md`): habilitar Sign in with Apple en Supabase con las credenciales de Apple Developer, correr la migración `0019` en el SQL Editor de Supabase, y confirmar las URLs finales de los legales.
 
+## Pasada de correcciones (post-Fase 1)
+
+**Agregado**
+- `supabase/migrations/0020_expire_finished_events.sql`: las fiestas ahora pasan a "finalizada" automáticamente apenas pasa su hora de fin (o 6 horas después de empezar si no se puso hora de fin), vía un cron que corre cada 10 minutos — antes el estado `'finished'` existía en la base pero nada lo usaba nunca, así que un evento corto podía seguir visible en el mapa/feed horas después de terminar. También se corrigió el filtro de `events_within_radius` para excluir estos eventos de inmediato, sin esperar al próximo ciclo del cron.
+- Botón de volver en `app/event/[id]/directions.tsx`: la pantalla de navegación no tenía ninguna forma visible de volver atrás antes de tocar "Iniciar navegación" (solo un botón de cerrar que aparecía recién una vez iniciada la navegación).
+
+**Modificado**
+- `app/event/[id]/directions.tsx`: los marcadores del mapa de navegación ahora muestran tu foto de perfil real y la foto de portada de la fiesta, en vez de puntos de colores lisos.
+- `app/event/[id]/index.tsx`: la galería de fotos tenía un ancho fijo de 390px que se cortaba en pantallas más angostas (iPhone SE/7/8, muchos Android) — ahora se mide el ancho real de la pantalla.
+- `app/trending.tsx`: de paso se corrigió un parámetro (`pageSize`) que se le pasaba a `useEventsFeed` pero que ese hook nunca usó — no tenía efecto, quedó limpio.
+
+**Eliminado — función de "guardar fiesta" completa, a pedido**
+- Pantalla `app/saved.tsx`, `hooks/useSavedEvents.ts`, `services/saved.ts`.
+- El botón de guardar (ícono de marcador) en las tarjetas de evento (`components/event/EventCard.tsx`) y en el detalle de la fiesta.
+- La entrada "Guardados" del menú de perfil.
+- El campo `isSaved` de `EventDetail` y su consulta asociada en `services/events.ts`.
+- La tabla `saved_events` en la base de datos **no se borró** (solo se dejó de usar desde la app) — si en algún momento querés borrarla también, avisame y preparo esa migración.
+
 ---
 *Se completa al cierre de cada fase.*

@@ -10,17 +10,13 @@ import { EventCard } from '@/components/event/EventCard';
 import { colors, spacing, typography } from '@/constants/theme';
 import { useLocationStore } from '@/stores/locationStore';
 import { useEventsFeed } from '@/hooks/useEventsFeed';
-import { useSavedEventIds, useToggleSaveEvent } from '@/hooks/useSavedEvents';
 
 export default function TrendingScreen() {
   const router = useRouter();
   const origin = useLocationStore((s) => s.origin);
 
-  const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm: 50, categorySlug: 'all', orderBy: 'popularity', pageSize: 30 } as any);
-  const savedIds = useSavedEventIds();
-  const toggleSave = useToggleSaveEvent();
+  const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm: 50, categorySlug: 'all', orderBy: 'popularity' });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
-  const savedSet = useMemo(() => new Set(savedIds.data ?? []), [savedIds.data]);
 
   const now = Date.now();
 
@@ -60,13 +56,7 @@ export default function TrendingScreen() {
                     ))}
                   </View>
                 )}
-                <EventCard
-                  event={item}
-                  index={index}
-                  saved={savedSet.has(item.id)}
-                  onPress={() => router.push(`/event/${item.id}`)}
-                  onToggleSave={() => toggleSave.mutate({ eventId: item.id, nextSaved: !savedSet.has(item.id) })}
-                />
+                <EventCard event={item} index={index} onPress={() => router.push(`/event/${item.id}`)} />
               </View>
             );
           }}

@@ -49,14 +49,11 @@ export async function fetchEventDetail(eventId: string): Promise<EventDetail> {
 
   if (error) throw error;
 
-  const [{ count: confirmedCount }, { data: privateLocation }, myRequest, saved, myAttendee] = await Promise.all([
+  const [{ count: confirmedCount }, { data: privateLocation }, myRequest, myAttendee] = await Promise.all([
     supabase.from('event_attendees').select('id', { count: 'exact', head: true }).eq('event_id', eventId).is('cancelled_at', null),
     supabase.from('event_locations_private').select('exact_address, exact_lat, exact_lng').eq('event_id', eventId).maybeSingle(),
     user
       ? supabase.from('event_requests').select('status').eq('event_id', eventId).eq('requester_id', user.id).maybeSingle()
-      : Promise.resolve({ data: null }),
-    user
-      ? supabase.from('saved_events').select('event_id').eq('event_id', eventId).eq('profile_id', user.id).maybeSingle()
       : Promise.resolve({ data: null }),
     user
       ? supabase
@@ -113,7 +110,6 @@ export async function fetchEventDetail(eventId: string): Promise<EventDetail> {
     exactLng: privateLocation?.exact_lng ?? null,
     myRequestStatus: (myRequest.data?.status as EventDetail['myRequestStatus']) ?? null,
     myEntryCode: myAttendee.data?.entry_code ?? null,
-    isSaved: Boolean(saved.data),
   };
 }
 

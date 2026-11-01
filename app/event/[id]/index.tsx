@@ -14,7 +14,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useEventDetail } from '@/hooks/useEventDetail';
 import { useAuthStore } from '@/stores/authStore';
-import { useToggleSaveEvent } from '@/hooks/useSavedEvents';
 import { requestEventAccess, cancelAttendance } from '@/services/requests';
 import { cancelEvent } from '@/services/events';
 import { uploadDniPhoto } from '@/services/storage';
@@ -37,8 +36,11 @@ export default function EventDetailScreen() {
   const profile = useAuthStore((s) => s.profile);
   const session = useAuthStore((s) => s.session);
   const { data: event, isLoading, isError, refetch } = useEventDetail(id);
-  const toggleSave = useToggleSaveEvent();
   const [requesting, setRequesting] = useState(false);
+  // Measured instead of hardcoded — a fixed pixel width here overflowed on
+  // any phone narrower than that number (iPhone SE/7/8 at 375px, many
+  // Android phones under 400px), breaking the horizontal paging.
+  const [galleryWidth, setGalleryWidth] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const [showDniModal, setShowDniModal] = useState(false);
   const [dniPhotoUri, setDniPhotoUri] = useState<string | null>(null);
@@ -155,17 +157,18 @@ export default function EventDetailScreen() {
         // "clamp" does — the same trick native apps use on hero images.
         decelerationRate="normal"
       >
-        <FlatList
-          data={event.images.length > 0 ? event.images : event.coverImageUrl ? [{ id: 'cover', url: event.coverImageUrl, sortOrder: 0 }] : []}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          keyExtractor={(img) => img.id}
-          style={styles.gallery}
-          renderItem={({ item }) => <Image source={{ uri: item.url }} style={styles.galleryImage} contentFit="cover" />}
-          ListEmptyComponent={<View style={[styles.galleryImage, styles.galleryFallback]} />}
-          ListHeaderComponent={undefined}
-        />
+        <View style={styles.gallery} onLayout={(e) => setGalleryWidth(e.nativeEvent.layout.width)}>
+          <FlatList
+            data={event.images.length > 0 ? event.images : event.coverImageUrl ? [{ id: 'cover', url: event.coverImageUrl, sortOrder: 0 }] : []}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(img) => img.id}
+            renderItem={({ item }) => <Image source={{ uri: item.url }} style={[styles.galleryImage, { width: galleryWidth }]} contentFit="cover" />}
+            ListEmptyComponent={<View style={[styles.galleryImage, styles.galleryFallback, { width: galleryWidth }]} />}
+            ListHeaderComponent={undefined}
+          />
+        </View>
 
         <View style={styles.body}>
         <View style={styles.titleRow}>
@@ -274,9 +277,6 @@ export default function EventDetailScreen() {
           >
             <Ionicons name="share-outline" size={20} color={colors.white} />
           </Pressable>
-          <Pressable style={styles.topBarButton} onPress={() => toggleSave.mutate({ eventId: event.id, nextSaved: !event.isSaved })}>
-            <Ionicons name={event.isSaved ? 'bookmark' : 'bookmark-outline'} size={20} color={colors.white} />
-          </Pressable>
           {!isOrganizer && (
             <Pressable
               style={styles.topBarButton}
@@ -340,7 +340,7 @@ function translateRequestError(message?: string): string {
 const styles = StyleSheet.create({
   scroll: { flex: 1 },
   gallery: { height: 260 },
-  galleryImage: { width: 390, height: 260 },
+  galleryImage: { height: 260 },
   galleryFallback: { backgroundColor: colors.surfaceRaised, width: '100%' },
   topBar: {
     position: 'absolute',

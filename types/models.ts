@@ -61,7 +61,6 @@ export type EventDetail = EventSummary & {
   myRequestStatus: RequestStatus | null;
   /** The viewer's own door entry code, present once their request is accepted. */
   myEntryCode: string | null;
-  isSaved: boolean;
 };
 
 export type EventRequest = {

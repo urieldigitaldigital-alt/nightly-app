@@ -11,9 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 
 type Props = {
   event: EventSummary;
-  saved?: boolean;
   onPress: () => void;
-  onToggleSave: () => void;
   /** Position in the list — staggers the entrance animation so cards cascade
    * in instead of popping together, capped so a long list's bottom items
    * don't wait seconds to appear. */
@@ -22,7 +20,7 @@ type Props = {
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
-export function EventCard({ event, saved = false, onPress, onToggleSave, index = 0 }: Props) {
+export function EventCard({ event, onPress, index = 0 }: Props) {
   const reducedMotion = useReducedMotion();
   const scale = useSharedValue(1);
   const cardStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -55,10 +53,6 @@ export function EventCard({ event, saved = false, onPress, onToggleSave, index =
           ) : (
             <View style={[styles.image, styles.imageFallback]} />
           )}
-
-          <Pressable onPress={onToggleSave} hitSlop={10} style={styles.saveButton} accessibilityLabel="Guardar fiesta">
-            <Ionicons name={saved ? 'bookmark' : 'bookmark-outline'} size={18} color={colors.white} />
-          </Pressable>
 
           <View style={styles.badgeRow}>
             {event.status === 'full' && <Badge label="Completo" tone="warning" />}
@@ -127,14 +121,6 @@ const styles = StyleSheet.create({
   },
   imageFallback: {
     backgroundColor: colors.surfaceRaised,
-  },
-  saveButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    backgroundColor: colors.overlay,
-    padding: spacing.xs,
-    borderRadius: radii.pill,
   },
   badgeRow: {
     position: 'absolute',
