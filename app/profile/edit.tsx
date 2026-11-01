@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +14,7 @@ import { MUSIC_GENRES } from '@/constants/musicGenres';
 import { useAuthStore } from '@/stores/authStore';
 import { updateMyProfile } from '@/services/profiles';
 import { uploadAvatar } from '@/services/storage';
-import { requestAccountDeletion, signOut } from '@/services/auth';
+import { ensurePhotoLibraryAccess } from '@/lib/permissions';
 
 export default function EditProfileScreen() {
   const router = useRouter();
@@ -28,15 +28,13 @@ export default function EditProfileScreen() {
   const [interests, setInterests] = useState<string[]>(profile?.musicInterests ?? []);
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [deleting, setDeleting] = useState(false);
 
   const toggleGenre = (genre: string) => {
     setInterests((prev) => (prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]));
   };
 
   const pickPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+    if (!(await ensurePhotoLibraryAccess())) return;
     const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [1, 1], quality: 0.8 });
     if (!result.canceled) setLocalPhotoUri(result.assets[0].uri);
   };
@@ -52,34 +50,6 @@ export default function EditProfileScreen() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Eliminar cuenta',
-      'Esta acción es permanente: se borran tu perfil, tus fiestas publicadas y tus conversaciones. ¿Confirmás?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            setDeleting(true);
-            try {
-              await requestAccountDeletion();
-              // The account is gone server-side; signOut() just clears the
-              // now-dangling local session so app/_layout.tsx's guard sends
-              // us to welcome instead of leaving the app stuck mid-screen.
-              await signOut();
-            } catch (e: any) {
-              Alert.alert('No pudimos eliminar tu cuenta', 'Probá de nuevo en unos minutos.');
-            } finally {
-              setDeleting(false);
-            }
-          },
-        },
-      ]
-    );
   };
 
   return (
@@ -120,8 +90,8 @@ export default function EditProfileScreen() {
 
           <Button label="Guardar cambios" onPress={handleSave} loading={loading} />
 
-          <Pressable style={styles.deleteRow} onPress={handleDeleteAccount} disabled={deleting}>
-            <Text style={styles.deleteText}>{deleting ? 'Eliminando...' : 'Eliminar mi cuenta'}</Text>
+          <Pressable style={styles.deleteRow} onPress={() => router.push('/settings/delete-account')}>
+            <Text style={styles.deleteText}>Eliminar mi cuenta</Text>
           </Pressable>
         </View>
       </ScrollView>

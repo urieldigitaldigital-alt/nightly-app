@@ -5,8 +5,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
+import { AppleSignInButton } from '@/components/ui/AppleSignInButton';
 import { colors, spacing, typography } from '@/constants/theme';
-import { signIn, signInWithGoogle } from '@/services/auth';
+import { signIn, signInWithApple, signInWithGoogle } from '@/services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -15,6 +16,7 @@ export default function LoginScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
 
   const handleGoogle = async () => {
     setError(null);
@@ -25,6 +27,18 @@ export default function LoginScreen() {
       setError('No pudimos conectar con Google. Probá de nuevo.');
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleApple = async () => {
+    setError(null);
+    setAppleLoading(true);
+    try {
+      await signInWithApple();
+    } catch (e: any) {
+      setError('No pudimos conectar con Apple. Probá de nuevo.');
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -83,6 +97,7 @@ export default function LoginScreen() {
           loading={googleLoading}
           icon={<Ionicons name="logo-google" size={18} color={colors.textPrimary} />}
         />
+        <AppleSignInButton onPress={handleApple} loading={appleLoading} />
       </View>
     </Screen>
   );

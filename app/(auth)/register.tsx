@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { colors, spacing, typography } from '@/constants/theme';
+import { brand } from '@/constants/brand';
 import { signUp } from '@/services/auth';
 
 function isAdult(day: string, month: string, year: string): boolean {
@@ -30,12 +31,17 @@ export default function RegisterScreen() {
   const [year, setYear] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const handleSubmit = async () => {
     setError(null);
 
     if (!email || !password || !username || !displayName) {
       setError('Completá todos los campos.');
+      return;
+    }
+    if (!acceptedTerms) {
+      setError('Tenés que aceptar los Términos de uso y la Política de privacidad para continuar.');
       return;
     }
     if (!/^[a-z0-9_.]{3,24}$/.test(username)) {
@@ -117,13 +123,24 @@ export default function RegisterScreen() {
             <Text style={styles.hint}>Tenés que ser mayor de 18 años para usar NIGHTLY.</Text>
           </View>
 
+          <Pressable style={styles.confirmRow} onPress={() => setAcceptedTerms((v) => !v)}>
+            <Ionicons name={acceptedTerms ? 'checkbox' : 'square-outline'} size={22} color={acceptedTerms ? colors.accent : colors.textMuted} />
+            <Text style={styles.confirmText}>
+              Acepto los{' '}
+              <Text style={styles.link} onPress={() => Linking.openURL(brand.termsUrl)}>
+                Términos de uso
+              </Text>{' '}
+              y la{' '}
+              <Text style={styles.link} onPress={() => Linking.openURL(brand.privacyUrl)}>
+                Política de privacidad
+              </Text>{' '}
+              de {brand.name}.
+            </Text>
+          </Pressable>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Button label="Crear cuenta" onPress={handleSubmit} loading={loading} />
-
-          <Text style={styles.terms}>
-            Al registrarte aceptás los Términos de uso y la Política de privacidad de NIGHTLY.
-          </Text>
+          <Button label="Crear cuenta" onPress={handleSubmit} loading={loading} disabled={!acceptedTerms} />
         </View>
       </ScrollView>
     </Screen>
@@ -162,11 +179,7 @@ const styles = StyleSheet.create({
   dobInputYear: { width: 90 },
   hint: { color: colors.textMuted, fontSize: typography.size.xs, marginTop: spacing.xxs },
   error: { color: colors.danger, fontSize: typography.size.sm },
-  terms: {
-    color: colors.textMuted,
-    fontSize: typography.size.xs,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    lineHeight: 18,
-  },
+  confirmRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
+  confirmText: { flex: 1, color: colors.textSecondary, fontSize: typography.size.sm, lineHeight: 20 },
+  link: { color: colors.accent, fontWeight: typography.weight.medium },
 });

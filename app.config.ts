@@ -10,7 +10,6 @@ import type { ExpoConfig } from 'expo/config';
 // clobbered.
 const LOCATION_PERMISSION_MESSAGE =
   'NIGHTLY usa tu ubicación para mostrarte las previas y fiestas que están pasando cerca tuyo, dentro de un radio que vos elegís.';
-const CAMERA_PERMISSION_MESSAGE = 'NIGHTLY necesita la cámara para que puedas sacar una foto de perfil o subir fotos a tu evento.';
 const PHOTO_LIBRARY_PERMISSION_MESSAGE = 'NIGHTLY necesita acceso a tus fotos para que puedas elegir una imagen de perfil o portada de evento.';
 
 // newArchEnabled is a valid Expo SDK 51+ config key not yet reflected in the
@@ -29,9 +28,11 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     supportsTablet: true,
     bundleIdentifier: 'com.nightly.app',
     buildNumber: '1',
+    // Generates the Sign In with Apple entitlement at prebuild time —
+    // required since the app offers Google sign-in (Apple Guideline 4.8).
+    usesAppleSignIn: true,
     infoPlist: {
       NSLocationWhenInUseUsageDescription: LOCATION_PERMISSION_MESSAGE,
-      NSCameraUsageDescription: CAMERA_PERMISSION_MESSAGE,
       NSPhotoLibraryUsageDescription: PHOTO_LIBRARY_PERMISSION_MESSAGE,
     },
   },
@@ -45,7 +46,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'CAMERA', 'READ_EXTERNAL_STORAGE'],
+    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'READ_EXTERNAL_STORAGE'],
   },
   web: {
     favicon: './assets/favicon.png',
@@ -64,6 +65,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     'expo-web-browser',
     'expo-router',
     'expo-font',
+    'expo-apple-authentication',
     [
       'expo-splash-screen',
       {
@@ -85,7 +87,6 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
       'expo-image-picker',
       {
         photosPermission: PHOTO_LIBRARY_PERMISSION_MESSAGE,
-        cameraPermission: CAMERA_PERMISSION_MESSAGE,
       },
     ],
     [

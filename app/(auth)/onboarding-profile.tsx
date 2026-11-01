@@ -13,6 +13,7 @@ import { CategoryChip } from '@/components/ui/CategoryChip';
 import { updateMyProfile } from '@/services/profiles';
 import { uploadAvatar } from '@/services/storage';
 import { useAuthStore } from '@/stores/authStore';
+import { ensurePhotoLibraryAccess } from '@/lib/permissions';
 
 export default function OnboardingProfileScreen() {
   const router = useRouter();
@@ -24,8 +25,7 @@ export default function OnboardingProfileScreen() {
   const [loading, setLoading] = useState(false);
 
   const pickPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+    if (!(await ensurePhotoLibraryAccess())) return;
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,

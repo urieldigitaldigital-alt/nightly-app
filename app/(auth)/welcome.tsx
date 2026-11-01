@@ -4,9 +4,10 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
+import { AppleSignInButton } from '@/components/ui/AppleSignInButton';
 import { brand } from '@/constants/brand';
 import { colors, radii, spacing, typography } from '@/constants/theme';
-import { signInWithGoogle } from '@/services/auth';
+import { signInWithApple, signInWithGoogle } from '@/services/auth';
 import { useAuthStore } from '@/stores/authStore';
 
 const SLIDES = [
@@ -38,6 +39,7 @@ export default function WelcomeScreen() {
   const onFrameLayout = (e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width);
   const [activeIndex, setActiveIndex] = useState(0);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [googleError, setGoogleError] = useState<string | null>(null);
   const oauthError = useAuthStore((s) => s.oauthError);
   const clearOAuthError = useAuthStore((s) => s.clearOAuthError);
@@ -60,6 +62,19 @@ export default function WelcomeScreen() {
       setGoogleError('No pudimos conectar con Google. Probá de nuevo.');
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleApple = async () => {
+    clearOAuthError();
+    setGoogleError(null);
+    setAppleLoading(true);
+    try {
+      await signInWithApple();
+    } catch (e: any) {
+      setGoogleError('No pudimos conectar con Apple. Probá de nuevo.');
+    } finally {
+      setAppleLoading(false);
     }
   };
 
@@ -110,6 +125,7 @@ export default function WelcomeScreen() {
           loading={googleLoading}
           icon={<Ionicons name="logo-google" size={18} color={colors.textPrimary} />}
         />
+        <AppleSignInButton onPress={handleApple} loading={appleLoading} />
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>o</Text>

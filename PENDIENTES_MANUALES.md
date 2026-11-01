@@ -16,8 +16,16 @@ Nada de esto lo puede hacer el código por sí solo (credenciales, cuentas de te
 
 ## Fase 1 — Legales
 
-- [ ] Confirmar dónde se hostean `terms.html`/`privacy.html` — la opción más simple es servirlos desde el mismo proyecto Vercel ya en producción (`nightly-app-seven.vercel.app/terms` y `/privacy`). Si preferís otro dominio, avisame.
-- [ ] Una vez tengan URL final, las voy a pegar en la app (Configuración > Legal) y en App Store Connect (campo "Privacy Policy URL").
+- [x] Ya enlazadas desde la app (Configuración > Legal) apuntando a `nightly-app-seven.vercel.app/terms.html` y `/privacy.html` (se sirven solas desde el mismo despliegue de Vercel, sin configuración extra). Si preferís otro dominio, avisame y actualizo `constants/brand.ts`.
+- [ ] Pegar esas mismas URLs en App Store Connect (campo "Privacy Policy URL") cuando crees el registro de la app.
+
+## Fase 1 — Revocación de token de Apple al eliminar cuenta
+
+- [ ] **No implementado todavía, a propósito.** Revocar el acceso en el lado de Apple cuando alguien elimina su cuenta requiere: el archivo `.p8` de la Key de Apple (el mismo de la sección anterior), el Team ID y el Key ID, para firmar un JWT y llamar al endpoint de revocación de Apple desde `supabase/functions/delete-account/index.ts`. Eliminar la cuenta en Supabase ya funciona igual sin esto (el usuario pierde el acceso a la app), solo falta notificarle a Apple que el permiso fue revocado. Decime cuando tengas las credenciales de la sección anterior y lo agrego — es un cambio chico una vez que exista el `.p8`.
+
+## Fase 1 — Migración de base de datos pendiente
+
+- [ ] Correr `supabase/migrations/0019_hide_blocked_from_discovery.sql` en el **SQL Editor del dashboard de Supabase** (Database → SQL Editor → pegar el contenido del archivo → Run). No tengo una conexión directa a tu base de datos desde acá, así que cada migración nueva que vaya agregando en las próximas fases la vas a tener que correr vos de la misma forma — te voy a avisar el nombre exacto del archivo cada vez.
 
 ## Fase 4 — Email
 
@@ -33,4 +41,4 @@ Nada de esto lo puede hacer el código por sí solo (credenciales, cuentas de te
 - [ ] Correr `eas submit` (o subirlo manualmente desde Xcode/Transporter) cuando el build esté listo — este paso final de envío lo hacés vos, yo dejo todo preparado para que sea un solo comando.
 
 ---
-*Última actualización: Fase 0.*
+*Última actualización: Fase 1.*

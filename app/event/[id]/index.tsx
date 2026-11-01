@@ -18,6 +18,7 @@ import { useToggleSaveEvent } from '@/hooks/useSavedEvents';
 import { requestEventAccess, cancelAttendance } from '@/services/requests';
 import { cancelEvent } from '@/services/events';
 import { uploadDniPhoto } from '@/services/storage';
+import { ensurePhotoLibraryAccess } from '@/lib/permissions';
 import { formatEventDateTime, formatPrice } from '@/lib/format';
 import { brand } from '@/constants/brand';
 
@@ -92,8 +93,7 @@ export default function EventDetailScreen() {
   };
 
   const handlePickDniPhoto = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+    if (!(await ensurePhotoLibraryAccess())) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,

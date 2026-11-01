@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { brand } from '@/constants/brand';
+import { useAuthStore } from '@/stores/authStore';
 import { fetchNotificationPrefs, NotificationPrefs, updateNotificationPrefs } from '@/services/profiles';
 
 const NOTIF_LABELS: Record<string, string> = {
@@ -23,6 +25,7 @@ const NOTIF_LABELS: Record<string, string> = {
 
 export default function SettingsScreen() {
   const router = useRouter();
+  const profile = useAuthStore((s) => s.profile);
   const [prefs, setPrefs] = useState<NotificationPrefs>({});
   const [loaded, setLoaded] = useState(false);
 
@@ -77,7 +80,41 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.version}>{brand.name} · v0.1.0</Text>
+        <Text style={styles.sectionTitle}>Legal</Text>
+        <View style={styles.card}>
+          <Pressable style={styles.row} onPress={() => Linking.openURL(brand.termsUrl)}>
+            <Text style={styles.rowLabel}>Términos y condiciones</Text>
+            <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+          </Pressable>
+          <Pressable style={[styles.row, styles.rowBorder]} onPress={() => Linking.openURL(brand.privacyUrl)}>
+            <Text style={styles.rowLabel}>Política de privacidad</Text>
+            <Ionicons name="open-outline" size={18} color={colors.textMuted} />
+          </Pressable>
+        </View>
+
+        {profile?.role === 'admin' && (
+          <>
+            <Text style={styles.sectionTitle}>Administración</Text>
+            <View style={styles.card}>
+              <Pressable style={styles.row} onPress={() => router.push('/admin')}>
+                <Text style={styles.rowLabel}>Revisar reportes</Text>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </Pressable>
+            </View>
+          </>
+        )}
+
+        <Text style={styles.sectionTitle}>Cuenta</Text>
+        <View style={styles.card}>
+          <Pressable style={styles.row} onPress={() => router.push('/settings/delete-account')}>
+            <Text style={styles.dangerLabel}>Eliminar cuenta</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.danger} />
+          </Pressable>
+        </View>
+
+        <Text style={styles.version}>
+          {brand.name} · v{Constants.expoConfig?.version ?? '1.0.0'}
+        </Text>
       </ScrollView>
     </Screen>
   );
@@ -91,5 +128,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md },
   rowBorder: { borderTopWidth: 1, borderTopColor: colors.border },
   rowLabel: { color: colors.textPrimary, fontSize: typography.size.md },
+  dangerLabel: { color: colors.danger, fontSize: typography.size.md, fontWeight: typography.weight.medium },
   version: { color: colors.textMuted, fontSize: typography.size.xs, textAlign: 'center', marginTop: spacing.xl },
 });

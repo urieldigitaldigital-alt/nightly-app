@@ -13,6 +13,7 @@ import { WizardHeader } from '@/components/event/WizardHeader';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useCategories } from '@/hooks/useCategories';
 import { useCreateEventStore } from '@/stores/createEventStore';
+import { ensurePhotoLibraryAccess } from '@/lib/permissions';
 
 export default function CreateEventStep1() {
   const router = useRouter();
@@ -21,8 +22,7 @@ export default function CreateEventStep1() {
   const [error, setError] = useState<string | null>(null);
 
   const pickCover = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
+    if (!(await ensurePhotoLibraryAccess())) return;
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,

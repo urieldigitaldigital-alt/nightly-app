@@ -1,9 +1,49 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import * as Crypto from 'expo-crypto';
 import { supabase } from '@/lib/supabase';
+import { updateMyProfile } from './profiles';
 
 WebBrowser.maybeCompleteAuthSession();
+
+/** Shared browser-redirect OAuth round trip — used by Google everywhere,
+ * and by Apple on web/Android where there's no native Sign In with Apple
+ * button (that's iOS-only; see signInWithApple below). */
+async function signInWithOAuthRedirect(provider: 'google' | 'apple') {
+  if (Platform.OS === 'web') {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      // Trailing slash so this matches a `<site>/**` entry in Supabase's
+      // redirect-URL allowlist unambiguously — some glob matchers don't
+      // treat `**` as matching zero path segments.
+      options: { redirectTo: `${window.location.origin}/` },
+    });
+    if (error) throw error;
+    return;
+  }
+
+  const redirectTo = Linking.createURL('auth-callback');
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo, skipBrowserRedirect: true },
+  });
+  if (error) throw error;
+  if (!data.url) throw new Error('NO_OAUTH_URL');
+
+  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+  if (result.type !== 'success' || !result.url) return;
+
+  const url = new URL(result.url);
+  const fragment = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.search.replace('?', ''));
+  const access_token = fragment.get('access_token');
+  const refresh_token = fragment.get('refresh_token');
+  if (access_token && refresh_token) {
+    const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (sessionError) throw sessionError;
+  }
+}
 
 export type SignUpInput = {
   email: string;
@@ -49,36 +89,57 @@ export async function signIn(email: string, password: string) {
  * standalone-mode chrome during that round trip is a real but lesser
  * problem than sign-in not working. */
 export async function signInWithGoogle() {
-  if (Platform.OS === 'web') {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      // Trailing slash so this matches a `<site>/**` entry in Supabase's
-      // redirect-URL allowlist unambiguously — some glob matchers don't
-      // treat `**` as matching zero path segments.
-      options: { redirectTo: `${window.location.origin}/` },
-    });
-    if (error) throw error;
+  await signInWithOAuthRedirect('google');
+}
+
+/** "Continuar con Apple" — required by Apple Guideline 4.8 since the app
+ * also offers Google sign-in. iOS gets the real native button (no browser
+ * round trip at all, via signInWithIdToken); web/Android fall back to the
+ * same OAuth redirect Google uses, since there's no native Apple button
+ * outside iOS.
+ *
+ * Apple never gives a real birthdate either, so this lands in the exact
+ * same birthdate_confirmed=false → confirm-birthdate flow as Google (see
+ * handle_new_user() in 0014_oauth_signup.sql, which is provider-agnostic). */
+export async function signInWithApple() {
+  if (Platform.OS !== 'ios') {
+    await signInWithOAuthRedirect('apple');
     return;
   }
 
-  const redirectTo = Linking.createURL('auth-callback');
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: { redirectTo, skipBrowserRedirect: true },
+  // Apple requires a SHA256-hashed nonce in the native request and the raw
+  // nonce handed to Supabase to verify against the identity token.
+  const rawNonce = Crypto.randomUUID();
+  const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
+
+  let credential: AppleAuthentication.AppleAuthenticationCredential;
+  try {
+    credential = await AppleAuthentication.signInAsync({
+      requestedScopes: [AppleAuthentication.AppleAuthenticationScope.FULL_NAME, AppleAuthentication.AppleAuthenticationScope.EMAIL],
+      nonce: hashedNonce,
+    });
+  } catch (e: any) {
+    // User backed out of the native sheet — not an error worth surfacing.
+    if (e?.code === 'ERR_REQUEST_CANCELED') return;
+    throw e;
+  }
+
+  if (!credential.identityToken) throw new Error('NO_IDENTITY_TOKEN');
+
+  const { error } = await supabase.auth.signInWithIdToken({
+    provider: 'apple',
+    token: credential.identityToken,
+    nonce: rawNonce,
   });
   if (error) throw error;
-  if (!data.url) throw new Error('NO_OAUTH_URL');
 
-  const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-  if (result.type !== 'success' || !result.url) return;
-
-  const url = new URL(result.url);
-  const fragment = new URLSearchParams(url.hash.startsWith('#') ? url.hash.slice(1) : url.search.replace('?', ''));
-  const access_token = fragment.get('access_token');
-  const refresh_token = fragment.get('refresh_token');
-  if (access_token && refresh_token) {
-    const { error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
-    if (sessionError) throw sessionError;
+  // Apple only ever hands over the user's name on the very first
+  // authorization ever granted to this app — handle_new_user() falls back
+  // to "Nuevo usuario" when there's nothing in raw_user_meta_data, so patch
+  // it in now while we still have it; silently skip on repeat sign-ins.
+  const fullName = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ').trim();
+  if (fullName) {
+    await updateMyProfile({ displayName: fullName }).catch(() => {});
   }
 }
 
