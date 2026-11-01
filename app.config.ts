@@ -1,12 +1,25 @@
 import type { ExpoConfig } from 'expo/config';
 
+// Single source of truth for each permission's usage-description string —
+// both the top-level `ios.infoPlist` block AND the individual config
+// plugins below (expo-location, expo-image-picker) end up writing to the
+// same Info.plist keys at prebuild time, and a plugin that doesn't get an
+// explicit string falls back to a generic English default that would
+// silently override the Spanish one. Defining each message once and
+// reusing it everywhere keeps them from drifting out of sync or getting
+// clobbered.
+const LOCATION_PERMISSION_MESSAGE =
+  'NIGHTLY usa tu ubicación para mostrarte las previas y fiestas que están pasando cerca tuyo, dentro de un radio que vos elegís.';
+const CAMERA_PERMISSION_MESSAGE = 'NIGHTLY necesita la cámara para que puedas sacar una foto de perfil o subir fotos a tu evento.';
+const PHOTO_LIBRARY_PERMISSION_MESSAGE = 'NIGHTLY necesita acceso a tus fotos para que puedas elegir una imagen de perfil o portada de evento.';
+
 // newArchEnabled is a valid Expo SDK 51+ config key not yet reflected in the
 // ExpoConfig type shipped with this SDK version's @expo/config-types.
 const config: ExpoConfig & { newArchEnabled?: boolean } = {
   name: 'NIGHTLY',
   slug: 'nightly',
   scheme: 'nightly',
-  version: '0.1.0',
+  version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
@@ -15,17 +28,16 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.nightly.app',
+    buildNumber: '1',
     infoPlist: {
-      NSLocationWhenInUseUsageDescription:
-        'NIGHTLY usa tu ubicación para mostrarte las previas y fiestas que están pasando cerca tuyo, dentro de un radio que vos elegís.',
-      NSCameraUsageDescription:
-        'NIGHTLY necesita la cámara para que puedas sacar una foto de perfil o subir fotos a tu evento.',
-      NSPhotoLibraryUsageDescription:
-        'NIGHTLY necesita acceso a tus fotos para que puedas elegir una imagen de perfil o portada de evento.',
+      NSLocationWhenInUseUsageDescription: LOCATION_PERMISSION_MESSAGE,
+      NSCameraUsageDescription: CAMERA_PERMISSION_MESSAGE,
+      NSPhotoLibraryUsageDescription: PHOTO_LIBRARY_PERMISSION_MESSAGE,
     },
   },
   android: {
     package: 'com.nightly.app',
+    versionCode: 1,
     adaptiveIcon: {
       backgroundColor: '#080808',
       foregroundImage: './assets/android-icon-foreground.png',
@@ -66,14 +78,14 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     [
       'expo-location',
       {
-        locationWhenInUsePermission:
-          'NIGHTLY usa tu ubicación para mostrarte las previas y fiestas que están pasando cerca tuyo.',
+        locationWhenInUsePermission: LOCATION_PERMISSION_MESSAGE,
       },
     ],
     [
       'expo-image-picker',
       {
-        photosPermission: 'NIGHTLY necesita acceso a tus fotos para elegir una imagen de perfil o portada de evento.',
+        photosPermission: PHOTO_LIBRARY_PERMISSION_MESSAGE,
+        cameraPermission: CAMERA_PERMISSION_MESSAGE,
       },
     ],
     [
