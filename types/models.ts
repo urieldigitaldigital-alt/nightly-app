@@ -85,7 +85,7 @@ export type Conversation = {
   eventId: string | null;
   isGroup: boolean;
   title: string | null;
-  lastMessage: { body: string; createdAt: string; senderId: string } | null;
+  lastMessage: { body: string | null; imagePath: string | null; createdAt: string; senderId: string } | null;
   unreadCount: number;
   otherMember: Pick<Profile, 'id' | 'displayName' | 'avatarUrl'> | null;
 };
@@ -94,9 +94,15 @@ export type Message = {
   id: string;
   conversationId: string;
   senderId: string;
-  body: string;
+  body: string | null;
+  imagePath?: string | null;
+  imageUrl?: string | null;
   createdAt: string;
-  status: 'sent' | 'delivered' | 'read';
+  // 'sending'/'error' only ever apply to the sender's own optimistic/queued
+  // copy of a message — rows that made it into the DB are always 'sent' or
+  // 'read' (derived client-side from the other member's last_read_at, see
+  // services/chat.ts).
+  status: 'sending' | 'sent' | 'read' | 'error';
 };
 
 export type NotificationType =

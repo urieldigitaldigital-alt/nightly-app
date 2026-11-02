@@ -40,6 +40,9 @@ export default function ChatListScreen() {
 
 function ConversationRow({ conversation, onPress }: { conversation: Conversation; onPress: () => void }) {
   const title = conversation.isGroup ? conversation.title ?? 'Chat grupal' : conversation.otherMember?.displayName ?? 'Usuario';
+  const lastMessagePreview = conversation.lastMessage
+    ? conversation.lastMessage.body ?? (conversation.lastMessage.imagePath ? '📷 Foto' : '')
+    : 'Sin mensajes todavía';
 
   return (
     <Pressable style={styles.row} onPress={onPress}>
@@ -59,7 +62,7 @@ function ConversationRow({ conversation, onPress }: { conversation: Conversation
         </View>
         <View style={styles.rowBottom}>
           <Text style={[styles.lastMessage, conversation.unreadCount > 0 && styles.unreadText]} numberOfLines={1}>
-            {conversation.lastMessage?.body ?? 'Sin mensajes todavía'}
+            {lastMessagePreview}
           </Text>
           {conversation.unreadCount > 0 && (
             <View style={styles.unreadBadge}>

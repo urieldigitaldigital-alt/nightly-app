@@ -12,6 +12,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { colors } from '@/constants/theme';
 import { SplashAnimation } from '@/components/SplashAnimation';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useChatOutboxFlush } from '@/hooks/useChatOutboxFlush';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -33,6 +34,7 @@ export default function RootLayout() {
   }, [initialize]);
 
   usePushNotifications(Boolean(session) && onboardingCompleted);
+  useChatOutboxFlush();
 
   useEffect(() => {
     // The native static splash (expo-splash-screen) matches SplashAnimation's

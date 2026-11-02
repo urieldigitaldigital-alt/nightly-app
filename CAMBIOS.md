@@ -93,5 +93,19 @@ Resumen por fase de todo lo agregado, modificado y eliminado rumbo al envío a r
 
 **Pendiente de tu parte**: activar "Confirm email" en el dashboard de Supabase y mostrar el código de 6 dígitos en la plantilla del email (hoy solo tiene el link) — ver `PENDIENTES_MANUALES.md`. Sin esto, el flujo nuevo queda construido y probado pero no se dispara en producción.
 
+## Fase 5 — Chat a nivel WhatsApp
+
+**Arreglado**
+- `app/chat/[id].tsx`: el input se vaciaba antes de confirmar el envío — si `sendMessage` fallaba (sin internet, error de servidor), el mensaje se perdía sin ningún aviso. Ahora cada mensaje pasa por una cola local (`stores/chatOutboxStore.ts`): aparece al instante con un ícono de "enviando", y si falla queda marcado en rojo con "No se envió · Reintentar" (toco para reintentar a mano, o se reintenta solo apenas vuelve la conexión).
+
+**Agregado**
+- **Recibos de lectura reales**: la burbuja de cada mensaje propio muestra ✓ (enviado) o ✓✓ celeste (leído), calculado a partir de `conversation_members.last_read_at` del otro integrante — sin agregar una tabla nueva, ese dato ya existía y se actualiza solo al abrir el chat.
+- **Fotos en el chat**: botón para adjuntar una foto desde la galería (bucket privado `chat-images`, solo visible para los integrantes de esa conversación), con miniatura en la burbuja y un visor a pantalla completa con pinch-to-zoom (`components/ui/ImageViewerModal.tsx`, reutilizable para otras fotos de la app más adelante).
+- **Cola offline**: los mensajes (texto o foto) escritos sin conexión quedan guardados en el dispositivo y se envían solos apenas vuelve internet (`hooks/useChatOutboxFlush.ts`, usando `@react-native-community/netinfo` para detectar la reconexión), sin que el usuario tenga que hacer nada ni se pierda el mensaje si cierra la app.
+- **Indicador "Escribiendo..."**: aparece en el header del chat mientras el otro integrante está tipeando, vía un canal de Realtime efímero (nunca se guarda en la base).
+- **Tap en notificación push navega correctamente**: el listener de `hooks/usePushNotifications.ts` estaba vacío — ahora usa la misma lógica de ruteo que ya tenía `app/notifications.tsx` (extraída a `lib/notificationRouting.ts` para no duplicarla), así que tocar un push de mensaje/solicitud/evento lleva directo a la pantalla correcta.
+
+**Pendiente de tu parte**: correr la migración `0022_chat_images.sql` en el SQL Editor de Supabase (ver `PENDIENTES_MANUALES.md`).
+
 ---
 *Se completa al cierre de cada fase.*

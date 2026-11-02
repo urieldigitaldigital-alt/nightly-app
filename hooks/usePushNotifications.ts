@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import { useRouter } from 'expo-router';
 import { registerPushToken } from '@/services/notifications';
+import { routeFromNotificationData } from '@/lib/notificationRouting';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -18,6 +20,8 @@ Notifications.setNotificationHandler({
  * token once there's an authenticated session. No-ops silently if the user
  * denies the permission — push is optional, the app works without it. */
 export function usePushNotifications(enabled: boolean) {
+  const router = useRouter();
+
   useEffect(() => {
     if (!enabled) return;
 
@@ -48,12 +52,10 @@ export function usePushNotifications(enabled: boolean) {
       }
     })();
 
-    subscription = Notifications.addNotificationResponseReceivedListener(() => {
-      // Deep-linking from a tapped push notification is handled by the OS
-      // opening the app; screen-level routing from notification data is
-      // handled in app/notifications.tsx once the user is in-app.
+    subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+      routeFromNotificationData(router, response.notification.request.content.data);
     });
 
     return () => subscription?.remove();
-  }, [enabled]);
+  }, [enabled, router]);
 }

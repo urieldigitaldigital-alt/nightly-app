@@ -30,6 +30,7 @@ No tengo una conexión directa a tu base de datos desde acá — cada migración
 - [ ] `supabase/migrations/0019_hide_blocked_from_discovery.sql` — bloquear a alguien oculta su perfil/eventos.
 - [ ] `supabase/migrations/0020_expire_finished_events.sql` — las fiestas se marcan "finalizadas" automáticamente apenas pasa su hora de fin (o 6 horas después de empezar si no pusiste hora de fin), y dejan de aparecer en el mapa/feed en ese momento. Corre cada 10 minutos.
 - [ ] `supabase/migrations/0021_live_locations.sql` — tabla + permisos para que un invitado aceptado pueda compartir su ubicación en vivo con el organizador mientras navega hacia la fiesta (opt-in, se pregunta antes de cada navegación).
+- [ ] `supabase/migrations/0022_chat_images.sql` — permite que un mensaje de chat lleve una foto (columna nueva + bucket privado `chat-images` con sus permisos).
 
 ## Plantillas de email (Authentication → Emails → Templates en Supabase)
 
@@ -51,4 +52,4 @@ No tengo una conexión directa a tu base de datos desde acá — cada migración
 - [ ] Correr `eas submit` (o subirlo manualmente desde Xcode/Transporter) cuando el build esté listo — este paso final de envío lo hacés vos, yo dejo todo preparado para que sea un solo comando.
 
 ---
-*Última actualización: Fase 4 completa.*
+*Última actualización: Fase 5 completa.*

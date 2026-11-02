@@ -1,5 +1,6 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { getChatImageUrls } from '@/services/storage';
 import { Conversation, Message } from '@/types/models';
 
 export async function fetchConversations(): Promise<Conversation[]> {
@@ -24,7 +25,7 @@ export async function fetchConversations(): Promise<Conversation[]> {
     .select(
       `id, event_id, is_group, title,
        members:conversation_members(profile_id, profile:profiles(id, display_name, avatar_url)),
-       last_message:messages(id, body, created_at, sender_id)`
+       last_message:messages(id, body, image_path, created_at, sender_id)`
     )
     .in('id', conversationIds)
     .order('created_at', { ascending: false });
@@ -54,7 +55,7 @@ export async function fetchConversations(): Promise<Conversation[]> {
       eventId: row.event_id,
       isGroup: row.is_group,
       title: row.title,
-      lastMessage: last ? { body: last.body, createdAt: last.created_at, senderId: last.sender_id } : null,
+      lastMessage: last ? { body: last.body, imagePath: last.image_path, createdAt: last.created_at, senderId: last.sender_id } : null,
       unreadCount,
       otherMember,
     } satisfies Conversation;
@@ -105,23 +106,29 @@ export async function fetchConversationMeta(conversationId: string) {
 export async function fetchMessages(conversationId: string): Promise<Message[]> {
   const { data, error } = await supabase
     .from('messages')
-    .select('id, conversation_id, sender_id, body, created_at')
+    .select('id, conversation_id, sender_id, body, image_path, created_at')
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true });
 
   if (error) throw error;
 
-  return (data ?? []).map((row) => ({
+  const rows = data ?? [];
+  const imagePaths = rows.map((r) => r.image_path).filter((p): p is string => Boolean(p));
+  const urlByPath = await getChatImageUrls(imagePaths);
+
+  return rows.map((row) => ({
     id: row.id,
     conversationId: row.conversation_id,
     senderId: row.sender_id,
     body: row.body,
+    imagePath: row.image_path,
+    imageUrl: row.image_path ? urlByPath[row.image_path] ?? null : null,
     createdAt: row.created_at,
     status: 'sent',
   }));
 }
 
-export async function sendMessage(conversationId: string, body: string) {
+export async function sendMessage(conversationId: string, body: string | null, imagePath?: string | null) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -129,7 +136,7 @@ export async function sendMessage(conversationId: string, body: string) {
 
   const { data, error } = await supabase
     .from('messages')
-    .insert({ conversation_id: conversationId, sender_id: user.id, body })
+    .insert({ conversation_id: conversationId, sender_id: user.id, body: body || null, image_path: imagePath || null })
     .select()
     .single();
 
@@ -152,26 +159,72 @@ export async function markConversationRead(conversationId: string) {
   if (error) throw error;
 }
 
-export function subscribeToConversationMessages(
+/** One channel per conversation carries both the postgres INSERT feed for
+ * new messages and an ephemeral (never persisted) broadcast event for the
+ * "escribiendo..." indicator — Supabase channels support mixing listener
+ * types on the same subscription, so there's no need for two sockets. */
+export function subscribeToConversation(
   conversationId: string,
-  onInsert: (message: Message) => void
+  handlers: { onInsert: (message: Message) => void; onTyping?: (profileId: string) => void }
 ): RealtimeChannel {
   return supabase
-    .channel(`messages:${conversationId}`)
+    .channel(`conversation:${conversationId}`)
     .on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${conversationId}` },
-      (payload) => {
+      async (payload) => {
         const row = payload.new as any;
-        onInsert({
+        const imageUrl = row.image_path ? await getChatImageUrls([row.image_path]).then((m) => m[row.image_path] ?? null) : null;
+        handlers.onInsert({
           id: row.id,
           conversationId: row.conversation_id,
           senderId: row.sender_id,
           body: row.body,
+          imagePath: row.image_path,
+          imageUrl,
           createdAt: row.created_at,
           status: 'sent',
         });
       }
+    )
+    .on('broadcast', { event: 'typing' }, (payload) => {
+      const profileId = (payload.payload as any)?.profileId;
+      if (profileId) handlers.onTyping?.(profileId);
+    })
+    .subscribe();
+}
+
+export function broadcastTyping(channel: RealtimeChannel, profileId: string) {
+  channel.send({ type: 'broadcast', event: 'typing', payload: { profileId } });
+}
+
+/** Every other member's last_read_at for this conversation — used to derive
+ * a WhatsApp-style read tick client-side (a message is "read" once it's
+ * older than every other member's last_read_at) instead of tracking a
+ * read/unread flag per message per recipient, which conversation_members
+ * already gives us for free. */
+export async function fetchOtherMembersLastRead(conversationId: string): Promise<string[]> {
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data, error } = await supabase
+    .from('conversation_members')
+    .select('profile_id, last_read_at')
+    .eq('conversation_id', conversationId)
+    .is('left_at', null);
+
+  if (error) throw error;
+  return (data ?? []).filter((m) => m.profile_id !== user?.id).map((m) => m.last_read_at as string);
+}
+
+export function subscribeToConversationMembers(conversationId: string, onChange: () => void): RealtimeChannel {
+  return supabase
+    .channel(`conversation-members:${conversationId}`)
+    .on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'conversation_members', filter: `conversation_id=eq.${conversationId}` },
+      onChange
     )
     .subscribe();
 }
