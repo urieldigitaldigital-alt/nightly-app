@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AppMap from '@/components/map/AppMap';
 import type { LatLng, MapMarkerSpec } from '@/components/map/AppMap.types';
@@ -89,6 +90,17 @@ export default function DirectionsScreen() {
   stepsRef.current = steps;
   const stepIndexRef = useRef(stepIndex);
   stepIndexRef.current = stepIndex;
+
+  // Keeps the screen on only while actually navigating — not during the
+  // preview or once arrived, so this doesn't drain the battery any more
+  // than a real turn-by-turn GPS app would.
+  useEffect(() => {
+    if (navState !== 'navigating') return;
+    activateKeepAwakeAsync().catch(() => {});
+    return () => {
+      deactivateKeepAwake();
+    };
+  }, [navState]);
 
   const lastBearingRef = useRef(OVERVIEW_BEARING);
   const lastFetchCoordsRef = useRef<LatLng | null>(null);
