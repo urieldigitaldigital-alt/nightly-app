@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FlatList, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
@@ -9,9 +9,13 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
+import AppMap from '@/components/map/AppMap';
+import type { MapMarkerSpec } from '@/components/map/AppMap.types';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useReceivedRequests } from '@/hooks/useReceivedRequests';
+import { useEventDetail } from '@/hooks/useEventDetail';
 import { acceptEventRequest, rejectEventRequest, getDniSignedUrl } from '@/services/requests';
+import { fetchEventLiveLocations, subscribeToEventLiveLocations, LiveLocation } from '@/services/liveLocation';
 import { formatRelativeShort } from '@/lib/format';
 import { EventRequest } from '@/types/models';
 
@@ -27,8 +31,27 @@ export default function EventRequestsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { data: event } = useEventDetail(id);
   const { data: requests, isLoading } = useReceivedRequests(id);
   const [actingId, setActingId] = useState<string | null>(null);
+  const [liveLocations, setLiveLocations] = useState<LiveLocation[]>([]);
+
+  useEffect(() => {
+    if (!id) return;
+    let cancelled = false;
+    fetchEventLiveLocations(id).then((rows) => {
+      if (!cancelled) setLiveLocations(rows);
+    });
+    const channel = subscribeToEventLiveLocations(id, () => {
+      fetchEventLiveLocations(id).then((rows) => {
+        if (!cancelled) setLiveLocations(rows);
+      });
+    });
+    return () => {
+      cancelled = true;
+      channel.unsubscribe();
+    };
+  }, [id]);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['received-requests', id] });
@@ -58,6 +81,18 @@ export default function EventRequestsScreen() {
   const pending = (requests ?? []).filter((r) => r.status === 'pending' || r.status === 'waitlisted');
   const decided = (requests ?? []).filter((r) => r.status !== 'pending' && r.status !== 'waitlisted');
 
+  const requesterById = new Map((requests ?? []).map((r) => [r.requester.id, r.requester]));
+  const liveMarkers: MapMarkerSpec[] = liveLocations
+    .map((loc): MapMarkerSpec | null => {
+      const requester = requesterById.get(loc.profileId);
+      if (!requester) return null;
+      return { id: loc.profileId, kind: 'photo', lat: loc.lat, lng: loc.lng, photoUrl: requester.avatarUrl };
+    })
+    .filter((m): m is MapMarkerSpec => m !== null);
+  if (event?.exactLat != null && event?.exactLng != null) {
+    liveMarkers.push({ id: 'venue', kind: 'dot', lat: event.exactLat, lng: event.exactLng, color: colors.textSecondary });
+  }
+
   return (
     <Screen edges={['top', 'bottom']} padded>
       <View style={styles.header}>
@@ -67,6 +102,25 @@ export default function EventRequestsScreen() {
         <Text style={styles.title}>Solicitudes</Text>
         <View style={{ width: 24 }} />
       </View>
+
+      {liveLocations.length > 0 && event?.exactLat != null && event?.exactLng != null && (
+        <View style={styles.liveMapWrap}>
+          <View style={styles.liveMapBadge}>
+            <View style={styles.liveDot} />
+            <Text style={styles.liveMapBadgeText}>
+              {liveLocations.length === 1 ? 'Alguien viene en camino' : `${liveLocations.length} personas vienen en camino`}
+            </Text>
+          </View>
+          <AppMap
+            style={styles.liveMap}
+            center={{ lat: event.exactLat, lng: event.exactLng }}
+            zoom={14}
+            pitch={0}
+            bearing={0}
+            markers={liveMarkers}
+          />
+        </View>
+      )}
 
       {isLoading ? (
         <LoadingState />
@@ -178,6 +232,30 @@ function RequestRow({
 
 const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.md },
+  liveMapWrap: {
+    height: 180,
+    borderRadius: radii.md,
+    overflow: 'hidden',
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  liveMap: { flex: 1 },
+  liveMapBadge: {
+    position: 'absolute',
+    top: spacing.xs,
+    left: spacing.xs,
+    zIndex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxs,
+    backgroundColor: colors.overlay,
+    borderRadius: radii.pill,
+    paddingVertical: 4,
+    paddingHorizontal: spacing.sm,
+  },
+  liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: colors.accent },
+  liveMapBadgeText: { color: colors.white, fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
   title: { color: colors.textPrimary, fontSize: typography.size.xl, fontWeight: typography.weight.bold },
   row: {
     flexDirection: 'row',

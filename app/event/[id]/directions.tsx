@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Animated, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Alert, Animated, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AppMap from '@/components/map/AppMap';
@@ -19,6 +19,7 @@ import { fetchDrivingDirections, DirectionsResult, RouteStep, TravelMode } from 
 import { decodePolyline } from '@/lib/polyline';
 import { maneuverIconName, maneuverRotationDeg, speakDistancePrefix } from '@/lib/navigationInstructions';
 import { speak, stopSpeaking } from '@/lib/voice';
+import { clearMyLiveLocation, upsertMyLiveLocation } from '@/services/liveLocation';
 
 // Street-level, tilted "in navigation" view — matches the live-tracking
 // follow mode this screen puts the map in (see FOLLOW below). Navigating
@@ -46,6 +47,10 @@ const ARRIVE_METERS = 20;
 // distance prefix) fires, on top of the one-time "far" announcement already
 // made when the step became current.
 const NEAR_MANEUVER_METERS = 40;
+// How often (at most) the guest's position is published for the organizer
+// to see — doesn't need anywhere near GPS-tick frequency, just enough to
+// look "live" on the organizer's map.
+const LIVE_LOCATION_PUBLISH_INTERVAL_MS = 8000;
 
 type TravelOption = 'auto' | 'moto' | 'pie';
 const TRAVEL_OPTIONS: { key: TravelOption; label: string }[] = [
@@ -108,6 +113,10 @@ export default function DirectionsScreen() {
   const lastRerouteAtRef = useRef(0);
   const lastSpokenRef = useRef<{ stepIndex: number; near: boolean }>({ stepIndex: -1, near: false });
   const bannerAnim = useRef(new Animated.Value(1)).current;
+  // Opt-in, asked right before navigation starts (see handleStartNavigation)
+  // — only publishes to live_locations while true.
+  const shareLocationRef = useRef(false);
+  const lastLiveLocationPublishRef = useRef(0);
 
   // Advances the current step / fires voice cues as the user physically
   // approaches each maneuver. Reads mutable state via refs (not closed-over
@@ -126,6 +135,10 @@ export default function DirectionsScreen() {
         if (navStateRef.current !== 'arrived') {
           setNavState('arrived');
           if (!mutedRef.current) speak('Llegaste a destino');
+          if (shareLocationRef.current && typeof id === 'string') {
+            shareLocationRef.current = false;
+            clearMyLiveLocation(id).catch(() => {});
+          }
         }
       } else if (lastSpokenRef.current.stepIndex !== idx) {
         if (!mutedRef.current) speak(`${speakDistancePrefix(dist)}, ${step.instruction}`);
@@ -176,6 +189,14 @@ export default function DirectionsScreen() {
           let maneuverDist: number | null = null;
           if (navStateRef.current === 'navigating') {
             maneuverDist = handleNavigationTick(coords);
+
+            if (shareLocationRef.current && typeof id === 'string') {
+              const now = Date.now();
+              if (now - lastLiveLocationPublishRef.current > LIVE_LOCATION_PUBLISH_INTERVAL_MS) {
+                lastLiveLocationPublishRef.current = now;
+                upsertMyLiveLocation(id, coords.lat, coords.lng, validHeading).catch(() => {});
+              }
+            }
           }
 
           if (isFollowingRef.current) {
@@ -242,7 +263,7 @@ export default function DirectionsScreen() {
     setViewState({ center: userCoords, zoom: navState === 'navigating' ? NAV_ZOOM_FAR : FOLLOW_ZOOM, pitch: navState === 'navigating' ? NAV_PITCH : FOLLOW_PITCH, bearing: lastBearingRef.current });
   };
 
-  const handleStartNavigation = () => {
+  const beginNavigating = () => {
     if (!directions) return;
     setNavState('navigating');
     setIsFollowing(true);
@@ -253,10 +274,51 @@ export default function DirectionsScreen() {
     }
   };
 
+  const handleStartNavigation = () => {
+    if (!directions) return;
+    Alert.alert(
+      'Compartir tu ubicación',
+      `¿Querés que ${event?.organizer.displayName ?? 'el organizador'} vea que te estás acercando mientras llegás? Se deja de compartir apenas llegás o cancelás.`,
+      [
+        {
+          text: 'No compartir',
+          style: 'cancel',
+          onPress: () => {
+            shareLocationRef.current = false;
+            beginNavigating();
+          },
+        },
+        {
+          text: 'Compartir',
+          onPress: () => {
+            shareLocationRef.current = true;
+            beginNavigating();
+          },
+        },
+      ]
+    );
+  };
+
   const handleExitNavigation = () => {
     stopSpeaking();
     setNavState('preview');
+    if (shareLocationRef.current && typeof id === 'string') {
+      shareLocationRef.current = false;
+      clearMyLiveLocation(id).catch(() => {});
+    }
   };
+
+  // Safety net for leaving this screen any other way (header back, OS back
+  // gesture) while still sharing — don't leave a stale "approaching" marker
+  // on the organizer's map after the guest has actually left this screen.
+  useEffect(() => {
+    return () => {
+      if (shareLocationRef.current && typeof id === 'string') {
+        clearMyLiveLocation(id).catch(() => {});
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleToggleMute = () => {
     setMuted((m) => {

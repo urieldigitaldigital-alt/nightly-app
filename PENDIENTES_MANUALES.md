@@ -8,7 +8,7 @@ Nada de esto lo puede hacer el código por sí solo (credenciales, cuentas de te
 
 ## Fase 1 — Sign in with Apple
 
-- [ ] En **developer.apple.com** → Certificates, Identifiers & Profiles → Identifiers → tu App ID (`com.nightly.app`): habilitar la capability **"Sign In with Apple"**.
+- [ ] En **developer.apple.com** → Certificates, Identifiers & Profiles → Identifiers → tu App ID (`com.afterdune.app`): habilitar la capability **"Sign In with Apple"**.
 - [ ] Crear un **Services ID** nuevo (distinto del bundle ID de la app) para usar como client ID de Apple en Supabase.
 - [ ] Crear una **Key** (Keys → "+") con "Sign In with Apple" habilitado, descargar el archivo `.p8` (solo se puede descargar una vez).
 - [ ] En el dashboard de **Supabase** → Authentication → Providers → Apple: pegar el Services ID, Team ID, Key ID y el contenido del archivo `.p8`.
@@ -29,16 +29,18 @@ No tengo una conexión directa a tu base de datos desde acá — cada migración
 
 - [ ] `supabase/migrations/0019_hide_blocked_from_discovery.sql` — bloquear a alguien oculta su perfil/eventos.
 - [ ] `supabase/migrations/0020_expire_finished_events.sql` — las fiestas se marcan "finalizadas" automáticamente apenas pasa su hora de fin (o 6 horas después de empezar si no pusiste hora de fin), y dejan de aparecer en el mapa/feed en ese momento. Corre cada 10 minutos.
+- [ ] `supabase/migrations/0021_live_locations.sql` — tabla + permisos para que un invitado aceptado pueda compartir su ubicación en vivo con el organizador mientras navega hacia la fiesta (opt-in, se pregunta antes de cada navegación).
 
-## Fase 4 — Email
+## Plantillas de email (Authentication → Emails → Templates en Supabase)
 
-- [ ] Configurar el remitente de los emails de Supabase Auth (Authentication → Email Templates / SMTP settings) con un dominio propio y sus registros SPF/DKIM, para que los códigos de verificación no caigan en spam. Si no tenés un proveedor de email transaccional (Resend, Postmark, etc.) todavía, decime y te recomiendo uno gratis para este volumen.
-- [ ] Opcional: personalizar la plantilla HTML del email de verificación desde el dashboard de Supabase con el logo/colores de NIGHTLY.
+- [x] "Confirm sign up" actualizada para decir Afterdune (ya tenía diseño propio con los colores de la marca, no era la plantilla genérica de Supabase).
+- [ ] Revisar las demás (Reset password, Magic link/OTP, Invite user, Change email, Reauthentication) por si también dicen "NIGHTLY" — quedó pendiente por un corte de conexión con la extensión de Chrome a mitad de la revisión.
+- [ ] Configurar el remitente de los emails de Supabase Auth (Authentication → Emails → SMTP Settings) con un dominio propio y sus registros SPF/DKIM, para que no caigan en spam. Si no tenés un proveedor de email transaccional (Resend, Postmark, etc.) todavía, decime y te recomiendo uno gratis para este volumen.
 
 ## Fase 6 — Cuenta demo y envío
 
 - [ ] Te voy a dejar acá mismo las credenciales de una cuenta demo (usuario + contraseña) con una previa de ejemplo y un chat de ejemplo, para que las copies en el campo "Notas para el revisor" de App Store Connect.
-- [ ] Crear el registro de la app en **App Store Connect** (nombre, bundle ID `com.nightly.app`, categoría, clasificación de edad — recomendación en `CHECKLIST_APP_STORE.md`).
+- [ ] Crear el registro de la app en **App Store Connect** (nombre Afterdune, bundle ID `com.afterdune.app`, categoría, clasificación de edad — recomendación en `CHECKLIST_APP_STORE.md`).
 - [ ] Completar el cuestionario de **App Privacy** en App Store Connect (te dejo el borrador de respuestas en `CHECKLIST_APP_STORE.md`).
 - [ ] Pegar la URL de la Política de Privacidad en App Store Connect.
 - [ ] Correr `eas submit` (o subirlo manualmente desde Xcode/Transporter) cuando el build esté listo — este paso final de envío lo hacés vos, yo dejo todo preparado para que sea un solo comando.
