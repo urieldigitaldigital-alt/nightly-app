@@ -76,7 +76,7 @@ export const useCreateEventStore = create<CreateEventState>()(
       reset: () => set({ draft: initialDraft }),
     }),
     {
-      name: 'nightly-create-event-draft',
+      name: 'afterdune-create-event-draft',
       storage: createJSONStorage(() => AsyncStorage, { replacer, reviver }),
       partialize: (state) => ({ draft: state.draft }),
     }

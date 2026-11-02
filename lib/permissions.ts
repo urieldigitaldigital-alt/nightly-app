@@ -14,7 +14,7 @@ export async function ensurePhotoLibraryAccess(): Promise<boolean> {
     return new Promise((resolve) => {
       Alert.alert(
         'Necesitamos acceso a tus fotos',
-        'Desactivaste el permiso de fotos para NIGHTLY. Activalo en Ajustes para poder elegir una imagen.',
+        'Desactivaste el permiso de fotos para Afterdune. Activalo en Ajustes para poder elegir una imagen.',
         [
           { text: 'Ahora no', style: 'cancel', onPress: () => resolve(false) },
           { text: 'Abrir Ajustes', onPress: () => { Linking.openSettings(); resolve(false); } },
@@ -26,7 +26,7 @@ export async function ensurePhotoLibraryAccess(): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
       'Acceso a tus fotos',
-      'NIGHTLY necesita acceso a tus fotos para que puedas elegir una imagen de perfil o portada de evento.',
+      'Afterdune necesita acceso a tus fotos para que puedas elegir una imagen de perfil o portada de evento.',
       [
         { text: 'Ahora no', style: 'cancel', onPress: () => resolve(false) },
         {

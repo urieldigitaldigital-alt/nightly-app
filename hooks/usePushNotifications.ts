@@ -44,7 +44,7 @@ export function usePushNotifications(enabled: boolean) {
       } catch (e) {
         // Push is optional — a failed registration (denied permission,
         // simulator with no APNs entitlement, etc.) shouldn't be a crash.
-        console.warn('[nightly] push registration failed', e);
+        console.warn('[afterdune] push registration failed', e);
       }
     })();
 

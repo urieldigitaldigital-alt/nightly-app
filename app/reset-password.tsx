@@ -63,7 +63,7 @@ export default function ResetPasswordScreen() {
         <View style={styles.center}>
           <Ionicons name="checkmark-circle" size={48} color={colors.success} />
           <Text style={styles.title}>Contraseña actualizada</Text>
-          <Text style={styles.subtitle}>Ya podés seguir usando NIGHTLY con tu nueva contraseña.</Text>
+          <Text style={styles.subtitle}>Ya podés seguir usando Afterdune con tu nueva contraseña.</Text>
           <Button label="Ir a Descubrir" onPress={() => router.replace('/(tabs)/discover')} />
         </View>
       </Screen>

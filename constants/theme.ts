@@ -1,5 +1,5 @@
 /**
- * Design tokens for NIGHTLY.
+ * Design tokens for Afterdune.
  * Everything brand-specific (name, colors, accent) lives in this one file and
  * `constants/brand.ts` so the identity can be swapped without touching screens.
  */

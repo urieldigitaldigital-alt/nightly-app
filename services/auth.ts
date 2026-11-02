@@ -154,10 +154,10 @@ export async function signOut() {
 }
 
 export async function requestPasswordReset(email: string) {
-  // Native opens the app via the nightly:// deep link; web needs an actual
+  // Native opens the app via the afterdune:// deep link; web needs an actual
   // page on the deployed site to land on, since there's no app to catch a
   // custom scheme there.
-  const redirectTo = Platform.OS === 'web' ? `${window.location.origin}/reset-password` : 'nightly://reset-password';
+  const redirectTo = Platform.OS === 'web' ? `${window.location.origin}/reset-password` : 'afterdune://reset-password';
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   if (error) throw error;

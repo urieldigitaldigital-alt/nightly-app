@@ -9,15 +9,15 @@ import type { ExpoConfig } from 'expo/config';
 // reusing it everywhere keeps them from drifting out of sync or getting
 // clobbered.
 const LOCATION_PERMISSION_MESSAGE =
-  'NIGHTLY usa tu ubicación para mostrarte las previas y fiestas que están pasando cerca tuyo, dentro de un radio que vos elegís.';
-const PHOTO_LIBRARY_PERMISSION_MESSAGE = 'NIGHTLY necesita acceso a tus fotos para que puedas elegir una imagen de perfil o portada de evento.';
+  'Afterdune usa tu ubicación para mostrarte las previas y fiestas que están pasando cerca tuyo, dentro de un radio que vos elegís.';
+const PHOTO_LIBRARY_PERMISSION_MESSAGE = 'Afterdune necesita acceso a tus fotos para que puedas elegir una imagen de perfil o portada de evento.';
 
 // newArchEnabled is a valid Expo SDK 51+ config key not yet reflected in the
 // ExpoConfig type shipped with this SDK version's @expo/config-types.
 const config: ExpoConfig & { newArchEnabled?: boolean } = {
-  name: 'NIGHTLY',
-  slug: 'nightly',
-  scheme: 'nightly',
+  name: 'Afterdune',
+  slug: 'afterdune',
+  scheme: 'afterdune',
   version: '1.0.0',
   orientation: 'portrait',
   icon: './assets/icon.png',
@@ -26,7 +26,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   newArchEnabled: true,
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.nightly.app',
+    bundleIdentifier: 'com.afterdune.app',
     buildNumber: '1',
     // Generates the Sign In with Apple entitlement at prebuild time —
     // required since the app offers Google sign-in (Apple Guideline 4.8).
@@ -37,7 +37,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     },
   },
   android: {
-    package: 'com.nightly.app',
+    package: 'com.afterdune.app',
     versionCode: 1,
     adaptiveIcon: {
       backgroundColor: '#080808',
@@ -54,8 +54,8 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     // Lets "Add to Home Screen" on Android/Chrome open without browser
     // chrome too — iOS Safari needs the apple-mobile-web-app-capable meta
     // tag in app/+html.tsx instead, since it ignores this manifest field.
-    name: 'NIGHTLY',
-    shortName: 'NIGHTLY',
+    name: 'Afterdune',
+    shortName: 'Afterdune',
     display: 'standalone',
     themeColor: '#080808',
     backgroundColor: '#080808',

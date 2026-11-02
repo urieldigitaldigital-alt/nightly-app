@@ -28,7 +28,7 @@ export default function PrivacyScreen() {
       <View style={styles.infoCard}>
         <InfoRow text="La dirección exacta de una fiesta privada solo se muestra a quienes el organizador acepta." />
         <InfoRow text="Tu ubicación en tiempo real nunca se comparte con organizadores ni otros asistentes." />
-        <InfoRow text="Podés usar NIGHTLY sin dar acceso permanente a tu ubicación." />
+        <InfoRow text="Podés usar Afterdune sin dar acceso permanente a tu ubicación." />
       </View>
 
       <Text style={styles.sectionTitle}>Usuarios bloqueados</Text>

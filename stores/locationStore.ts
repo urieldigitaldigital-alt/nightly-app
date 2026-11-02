@@ -58,7 +58,7 @@ export const useLocationStore = create<LocationState>()(
         supabase
           .rpc('upsert_my_location', { p_lat: position.coords.latitude, p_lng: position.coords.longitude })
           .then(({ error }) => {
-            if (error) console.warn('[nightly] upsert_my_location failed', error.message);
+            if (error) console.warn('[afterdune] upsert_my_location failed', error.message);
           });
       },
 
@@ -69,7 +69,7 @@ export const useLocationStore = create<LocationState>()(
       setRadiusKm: (radiusKm) => set({ radiusKm }),
     }),
     {
-      name: 'nightly-location-prefs',
+      name: 'afterdune-location-prefs',
       storage: createJSONStorage(() => AsyncStorage),
       // Only the radius survives a restart — origin/permission are re-derived
       // fresh each session rather than trusting stale coordinates.

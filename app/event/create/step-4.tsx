@@ -103,7 +103,7 @@ export default function CreateEventStep4() {
         <Pressable style={styles.confirmRow} onPress={() => setConfirmed((v) => !v)}>
           <Ionicons name={confirmed ? 'checkbox' : 'square-outline'} size={22} color={confirmed ? colors.accent : colors.textMuted} />
           <Text style={styles.confirmText}>
-            Confirmo que estoy autorizado a organizar este evento en este lugar y que cumplo las reglas de convivencia de NIGHTLY.
+            Confirmo que estoy autorizado a organizar este evento en este lugar y que cumplo las reglas de convivencia de Afterdune.
           </Text>
         </Pressable>
 

@@ -53,7 +53,7 @@ export default function RegisterScreen() {
       return;
     }
     if (!isAdult(day, month, year)) {
-      setError('NIGHTLY es para mayores de 18 años. Revisá tu fecha de nacimiento.');
+      setError('Afterdune es para mayores de 18 años. Revisá tu fecha de nacimiento.');
       return;
     }
 
@@ -120,7 +120,7 @@ export default function RegisterScreen() {
                 style={styles.dobInputYear}
               />
             </View>
-            <Text style={styles.hint}>Tenés que ser mayor de 18 años para usar NIGHTLY.</Text>
+            <Text style={styles.hint}>Tenés que ser mayor de 18 años para usar Afterdune.</Text>
           </View>
 
           <Pressable style={styles.confirmRow} onPress={() => setAcceptedTerms((v) => !v)}>

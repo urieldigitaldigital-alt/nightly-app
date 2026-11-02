@@ -68,7 +68,7 @@ export default function EventDetailScreen() {
     const shareUrl = `${brand.webUrl}/event/${event.id}`;
     try {
       await Share.share({
-        message: `Mirá esta fiesta en NIGHTLY: ${event.title}\n${shareUrl}`,
+        message: `Mirá esta fiesta en Afterdune: ${event.title}\n${shareUrl}`,
         url: shareUrl,
         title: event.title,
       });

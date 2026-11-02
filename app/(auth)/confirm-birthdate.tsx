@@ -31,7 +31,7 @@ export default function ConfirmBirthdateScreen() {
   const handleSubmit = async () => {
     setError(null);
     if (!isAdult(day, month, year)) {
-      setError('NIGHTLY es para mayores de 18 años. Revisá la fecha.');
+      setError('Afterdune es para mayores de 18 años. Revisá la fecha.');
       return;
     }
 
@@ -43,7 +43,7 @@ export default function ConfirmBirthdateScreen() {
       await refreshProfile();
       router.push('/(auth)/onboarding-profile');
     } catch (e: any) {
-      setError(e?.message?.includes('MUST_BE_ADULT') ? 'Tenés que ser mayor de 18 años para usar NIGHTLY.' : 'No pudimos guardar tu fecha de nacimiento. Probá de nuevo.');
+      setError(e?.message?.includes('MUST_BE_ADULT') ? 'Tenés que ser mayor de 18 años para usar Afterdune.' : 'No pudimos guardar tu fecha de nacimiento. Probá de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -53,7 +53,7 @@ export default function ConfirmBirthdateScreen() {
     <Screen edges={['top', 'bottom']} padded>
       <Text style={styles.title}>Un último paso</Text>
       <Text style={styles.subtitle}>
-        Google no nos comparte tu fecha de nacimiento, y NIGHTLY es solo para mayores de 18. Completala para seguir.
+        Google no nos comparte tu fecha de nacimiento, y Afterdune es solo para mayores de 18. Completala para seguir.
       </Text>
 
       <View style={styles.form}>

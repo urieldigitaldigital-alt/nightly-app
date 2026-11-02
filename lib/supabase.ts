@@ -15,7 +15,7 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 if (!isSupabaseConfigured) {
   console.warn(
-    '[nightly] EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY are not set. ' +
+    '[afterdune] EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY are not set. ' +
       'Copy .env.example to .env and fill in your Supabase project credentials.'
   );
 }
@@ -35,7 +35,7 @@ export const supabase = createClient(supabaseUrl || 'https://placeholder.supabas
     persistSession: true,
     // Only web needs this: the password-reset email link lands back on the
     // site with the recovery token in the URL, and supabase-js needs to pick
-    // it up from there. Native handles the equivalent via the nightly://
+    // it up from there. Native handles the equivalent via the afterdune://
     // deep link instead, so it doesn't need URL parsing.
     detectSessionInUrl: Platform.OS === 'web',
   },

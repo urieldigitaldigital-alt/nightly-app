@@ -21,7 +21,7 @@ export default function AdminScreen() {
   if (profile?.role !== 'admin') {
     return (
       <Screen padded>
-        <EmptyState icon={<Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />} title="Acceso restringido" description="Esta sección es solo para el equipo de NIGHTLY." actionLabel="Volver" onAction={() => router.back()} />
+        <EmptyState icon={<Ionicons name="lock-closed-outline" size={36} color={colors.textMuted} />} title="Acceso restringido" description="Esta sección es solo para el equipo de Afterdune." actionLabel="Volver" onAction={() => router.back()} />
       </Screen>
     );
   }
