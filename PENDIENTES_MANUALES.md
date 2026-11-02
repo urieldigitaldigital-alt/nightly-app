@@ -37,6 +37,11 @@ No tengo una conexión directa a tu base de datos desde acá — cada migración
 - [ ] Revisar las demás (Reset password, Magic link/OTP, Invite user, Change email, Reauthentication) por si también dicen "NIGHTLY" — quedó pendiente por un corte de conexión con la extensión de Chrome a mitad de la revisión.
 - [ ] Configurar el remitente de los emails de Supabase Auth (Authentication → Emails → SMTP Settings) con un dominio propio y sus registros SPF/DKIM, para que no caigan en spam. Si no tenés un proveedor de email transaccional (Resend, Postmark, etc.) todavía, decime y te recomiendo uno gratis para este volumen.
 
+## Fase 4 — Verificación de email con código de 6 dígitos
+
+- [ ] **Activar la confirmación de email obligatoria**: Authentication → Settings → "Confirm email" (tiene que estar en ON). Hoy está apagado, así que `signUp()` devuelve sesión directa y la pantalla nueva `verify-email.tsx` nunca se usa en producción hasta que actives esto.
+- [ ] **Actualizar la plantilla "Confirm sign up"**: hoy el email solo muestra un botón "Confirmar mi cuenta" (el link), pero la pantalla nueva le pide al usuario que escriba el código de 6 dígitos. Agregar `{{ .Token }}` bien visible en el cuerpo del email (grande, con buen contraste) además del botón existente — dejar el link también sirve como alternativa si el código no llega bien.
+
 ## Fase 6 — Cuenta demo y envío
 
 - [ ] Te voy a dejar acá mismo las credenciales de una cuenta demo (usuario + contraseña) con una previa de ejemplo y un chat de ejemplo, para que las copies en el campo "Notas para el revisor" de App Store Connect.
@@ -46,4 +51,4 @@ No tengo una conexión directa a tu base de datos desde acá — cada migración
 - [ ] Correr `eas submit` (o subirlo manualmente desde Xcode/Transporter) cuando el build esté listo — este paso final de envío lo hacés vos, yo dejo todo preparado para que sea un solo comando.
 
 ---
-*Última actualización: pasada de correcciones post-Fase 1.*
+*Última actualización: Fase 4 completa.*

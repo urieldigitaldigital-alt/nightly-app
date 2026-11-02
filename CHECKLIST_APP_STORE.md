@@ -1,4 +1,4 @@
-# Checklist de requisitos de Apple — NIGHTLY
+# Checklist de requisitos de Apple — Afterdune
 
 Estado en vivo, se actualiza al final de cada fase. ✅ = listo y verificado. ⏳ = en progreso / planeado para una fase posterior. ❌ = todavía no empezado. 🧍 = depende de una acción manual tuya (ver `PENDIENTES_MANUALES.md`).
 
@@ -6,7 +6,7 @@ Estado en vivo, se actualiza al final de cada fase. ✅ = listo y verificado. �
 
 | Ítem | Estado | Dónde |
 |---|---|---|
-| Política de Privacidad específica de NIGHTLY (no genérica) | ✅ ya menciona DNI, push y Apple | `public/privacy.html` |
+| Política de Privacidad específica de Afterdune (no genérica) | ✅ ya menciona DNI, push y Apple | `public/privacy.html` |
 | Términos y Condiciones específicos | ✅ | `public/terms.html` |
 | Legales hosteados en una URL pública | 🧍 | `nightly-app-seven.vercel.app/terms.html` y `/privacy.html` — confirmar si querés otro dominio |
 | Legales enlazados desde Configuración > Legal | ✅ | `app/settings/index.tsx` |
@@ -31,6 +31,7 @@ Estado en vivo, se actualiza al final de cada fase. ✅ = listo y verificado. �
 | Google | ✅ | `services/auth.ts` |
 | Sign in with Apple | ✅ código listo — botón nativo en iOS, requiere habilitar el provider en Supabase | `services/auth.ts` (`signInWithApple`), `components/ui/AppleSignInButton.tsx` |
 | Exploración del mapa sin cuenta | ❌ no implementado — decisión de producto para evaluar más adelante, no bloqueante |
+| Verificación de email con código de 6 dígitos | ✅ código listo (`app/(auth)/verify-email.tsx`), 🧍 falta activar "Confirm email" en Supabase y mostrar el código en la plantilla del mail | ver `PENDIENTES_MANUALES.md` |
 
 ## Contenido generado por usuarios (Guideline 1.2)
 
