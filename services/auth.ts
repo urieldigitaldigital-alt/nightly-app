@@ -143,6 +143,20 @@ export async function signInWithApple() {
   }
 }
 
+/** Completes the 6-digit email confirmation code flow — on success this
+ * returns a real session, same as if the user had clicked the link in the
+ * email, so the caller can proceed straight into onboarding. */
+export async function verifySignupCode(email: string, token: string) {
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'signup' });
+  if (error) throw error;
+  return data;
+}
+
+export async function resendSignupCode(email: string) {
+  const { error } = await supabase.auth.resend({ type: 'signup', email });
+  if (error) throw error;
+}
+
 export async function confirmBirthdate(birthdate: string) {
   const { error } = await supabase.rpc('confirm_birthdate', { p_birthdate: birthdate });
   if (error) throw error;

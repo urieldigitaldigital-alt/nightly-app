@@ -53,6 +53,10 @@ export default function LoginScreen() {
       await signIn(email, password);
       // app/_layout.tsx's guard effect takes it from here (tabs vs onboarding).
     } catch (e: any) {
+      if (e?.message?.toLowerCase().includes('email not confirmed')) {
+        router.push({ pathname: '/(auth)/verify-email', params: { email } });
+        return;
+      }
       setError(
         e?.message?.includes('Invalid login')
           ? 'Email o contraseña incorrectos. Si te registraste con Google, usá "Continuar con Google" en vez de contraseña.'

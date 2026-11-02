@@ -65,10 +65,10 @@ export default function RegisterScreen() {
       if (session) {
         router.replace('/(auth)/onboarding-profile');
       } else {
-        // Only reachable if email confirmation ever gets re-enabled in
-        // Supabase — signUp() succeeds but there's no session yet, so
-        // onboarding (which needs an authenticated request) would crash.
-        setError('Revisá tu email para confirmar tu cuenta antes de continuar.');
+        // No session back yet means Supabase's "Confirm email" requirement
+        // is on — signUp() already sent the code, this just takes them to
+        // enter it.
+        router.push({ pathname: '/(auth)/verify-email', params: { email } });
       }
     } catch (e: any) {
       setError(translateAuthError(e?.message));
