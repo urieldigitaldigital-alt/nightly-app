@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Stack, useRouter, useSegments } from 'expo-router';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
@@ -77,51 +77,49 @@ export default function RootLayout() {
   }, [loading, session, onboardingCompleted, birthdateConfirmed, segments, router]);
 
   return (
-    // On a wide browser window the mobile-first layouts here stretch edge
-    // to edge and everything (absolute-positioned icons, full-width
-    // buttons) ends up misaligned and oversized — capping the app at a
-    // phone-sized column and centering it keeps it looking like a real app
-    // on web regardless of window width. Native screens are already
-    // narrower than this cap, so it's a no-op there except on tablets.
-    <View style={styles.webBackdrop}>
-      <GestureHandlerRootView style={styles.webFrame}>
-        <SafeAreaProvider>
-          <QueryClientProvider client={queryClient}>
-            <StatusBar style="light" />
-            {/* Mounted immediately (not gated on `loading`) so data starts
-                fetching right away — the splash overlay below covers it
-                visually until both the intro animation and auth state are
-                ready, so there's nothing to see prematurely either way. */}
-            <Animated.View style={[styles.content, contentStyle]}>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: colors.background },
-                  // iOS-style slide-in-from-the-right with the reverse on
-                  // back — react-native-screens' native-stack already does
-                  // this on iOS/Android by default, this just makes it
-                  // explicit and asks for it on web too (where there was no
-                  // transition at all otherwise).
-                  animation: 'slide_from_right',
-                }}
-              >
-                <Stack.Screen name="(auth)" />
-                <Stack.Screen name="(tabs)" />
-                <Stack.Screen name="event/[id]/index" options={{ presentation: 'card' }} />
-                <Stack.Screen name="event/create" options={{ presentation: 'modal' }} />
-                <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
-              </Stack>
-            </Animated.View>
-            {!introDone && <SplashAnimation ready={!loading} onFinish={handleIntroFinish} />}
-          </QueryClientProvider>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    </View>
+    // Full-bleed on every platform — phone, tablet (iPad has
+    // supportsTablet: true in app.config.ts) and web at any window size.
+    // This used to cap at a phone-sized column on wide viewports, which
+    // left large empty black bars on iPad and desktop browsers; every
+    // screen here is built with flex/percentage layouts (no screen
+    // hardcodes a pixel width assuming a narrow phone), so letting the
+    // frame fill the real viewport is safe.
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <QueryClientProvider client={queryClient}>
+          <StatusBar style="light" />
+          {/* Mounted immediately (not gated on `loading`) so data starts
+              fetching right away — the splash overlay below covers it
+              visually until both the intro animation and auth state are
+              ready, so there's nothing to see prematurely either way. */}
+          <Animated.View style={[styles.content, contentStyle]}>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+                // iOS-style slide-in-from-the-right with the reverse on
+                // back — react-native-screens' native-stack already does
+                // this on iOS/Android by default, this just makes it
+                // explicit and asks for it on web too (where there was no
+                // transition at all otherwise).
+                animation: 'slide_from_right',
+              }}
+            >
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen name="event/[id]/index" options={{ presentation: 'card' }} />
+              <Stack.Screen name="event/create" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
+            </Stack>
+          </Animated.View>
+          {!introDone && <SplashAnimation ready={!loading} onFinish={handleIntroFinish} />}
+        </QueryClientProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
 const styles = StyleSheet.create({
-  webBackdrop: { flex: 1, alignItems: 'center', backgroundColor: colors.background },
-  webFrame: { flex: 1, width: '100%', maxWidth: 480 },
+  root: { flex: 1, backgroundColor: colors.background },
   content: { flex: 1 },
 });
