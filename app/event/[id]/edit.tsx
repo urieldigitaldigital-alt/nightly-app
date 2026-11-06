@@ -11,7 +11,8 @@ import { DateTimeField } from '@/components/ui/DateTimeField';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { colors, spacing, typography } from '@/constants/theme';
 import { useEventDetail } from '@/hooks/useEventDetail';
-import { supabase } from '@/lib/supabase';
+import { userFacingError } from '@/lib/errors';
+import { updateEvent } from '@/services/events';
 
 export default function EditEventScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -43,24 +44,19 @@ export default function EditEventScreen() {
     setSaving(true);
     setError(null);
     try {
-      const { error: updateError } = await supabase
-        .from('events')
-        .update({
-          title,
-          description,
-          rules: rules || null,
-          capacity: capacity ? Number(capacity) : null,
-          starts_at: startsAt?.toISOString(),
-        })
-        .eq('id', event.id);
-
-      if (updateError) throw updateError;
+      await updateEvent(event.id, {
+        title,
+        description,
+        rules: rules || null,
+        capacity: capacity ? Number(capacity) : null,
+        startsAt: (startsAt ?? new Date(event.startsAt)).toISOString(),
+      });
 
       queryClient.invalidateQueries({ queryKey: ['event-detail', event.id] });
       queryClient.invalidateQueries({ queryKey: ['my-events'] });
       router.back();
-    } catch (e: any) {
-      setError('No pudimos guardar los cambios. Probá de nuevo.');
+    } catch (e: unknown) {
+      setError(userFacingError(e, 'No pudimos guardar los cambios. Probá de nuevo.'));
     } finally {
       setSaving(false);
     }

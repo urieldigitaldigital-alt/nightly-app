@@ -12,6 +12,7 @@ import { useCreateEventStore } from '@/stores/createEventStore';
 import { createEvent } from '@/services/events';
 import { uploadEventImage } from '@/services/storage';
 import { supabase } from '@/lib/supabase';
+import { userFacingError } from '@/lib/errors';
 import { formatEventDateTime, formatPrice } from '@/lib/format';
 
 export default function CreateEventStep4() {
@@ -68,8 +69,8 @@ export default function CreateEventStep4() {
       queryClient.invalidateQueries({ queryKey: ['events-feed'] });
       reset();
       router.replace(`/event/${event.id}`);
-    } catch (e: any) {
-      setError(translatePublishError(e?.message));
+    } catch (e: unknown) {
+      setError(translatePublishError(e));
     } finally {
       setLoading(false);
     }
@@ -115,11 +116,11 @@ export default function CreateEventStep4() {
   );
 }
 
-function translatePublishError(message?: string): string {
-  if (!message) return 'No pudimos publicar la fiesta. Probá de nuevo.';
+function translatePublishError(error: unknown): string {
+  const message = error && typeof error === 'object' && 'message' in error ? String((error as { message: unknown }).message ?? '') : '';
   if (message.includes('UNKNOWN_CATEGORY')) return 'La categoría elegida ya no está disponible.';
   if (message.includes('AUTHORIZATION_NOT_CONFIRMED')) return 'Tenés que confirmar la autorización del lugar.';
-  return message;
+  return userFacingError(error, 'No pudimos publicar la fiesta. Probá de nuevo.');
 }
 
 const styles = StyleSheet.create({

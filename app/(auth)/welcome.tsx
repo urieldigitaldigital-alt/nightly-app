@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { LayoutChangeEvent, Linking, NativeScrollEvent, NativeSyntheticEvent, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -133,6 +133,27 @@ export default function WelcomeScreen() {
         </View>
         <Button label="Crear cuenta" onPress={() => router.push('/(auth)/register')} />
         <Button label="Ya tengo cuenta" variant="outline" onPress={() => router.push('/(auth)/login')} />
+
+        {/* Entrar con Google o con Apple crea la cuenta sin pasar por el
+            formulario de registro, así que las casillas de aceptación de esa
+            pantalla nunca se ven en ese camino. Esta línea es donde esos dos
+            caminos aceptan lo mismo, y por eso está acá abajo y no dentro
+            del formulario. */}
+        <Text style={styles.legal}>
+          Al continuar aceptás los{' '}
+          <Text style={styles.legalLink} onPress={() => Linking.openURL(brand.termsUrl)}>
+            Términos de uso
+          </Text>
+          , la{' '}
+          <Text style={styles.legalLink} onPress={() => Linking.openURL(brand.privacyUrl)}>
+            Política de privacidad
+          </Text>{' '}
+          y las{' '}
+          <Text style={styles.legalLink} onPress={() => router.push('/community-guidelines')}>
+            Normas de la comunidad
+          </Text>
+          , con tolerancia cero al contenido objetable.
+        </Text>
       </View>
     </Screen>
   );
@@ -202,6 +223,14 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     paddingBottom: spacing.md,
   },
+  legal: {
+    color: colors.textMuted,
+    fontSize: typography.size.xs,
+    lineHeight: 16,
+    textAlign: 'center',
+    marginTop: spacing.xs,
+  },
+  legalLink: { color: colors.textSecondary, textDecorationLine: 'underline' },
   divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginVertical: spacing.xxs },
   dividerLine: { flex: 1, height: 1, backgroundColor: colors.border },
   dividerText: { color: colors.textMuted, fontSize: typography.size.xs },

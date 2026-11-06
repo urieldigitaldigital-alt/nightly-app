@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import AppMap from '@/components/map/AppMap';
 import type { MapMarkerSpec } from '@/components/map/AppMap.types';
 import { useRouter } from 'expo-router';
@@ -24,28 +24,53 @@ export default function MapScreen() {
   const origin = useLocationStore((s) => s.origin);
   const radiusKm = useLocationStore((s) => s.radiusKm);
   const setRadiusKm = useLocationStore((s) => s.setRadiusKm);
+  const requestPermissionAndLocate = useLocationStore((s) => s.requestPermissionAndLocate);
   const [categorySlug, setCategorySlug] = useState('all');
   const [selectedCluster, setSelectedCluster] = useState<MarkerCluster | null>(null);
+  // Modo seguimiento: cuando está activo, el mapa se mantiene centrado en la
+  // persona y rota con la brújula — el comportamiento de un GPS. Se apaga
+  // solo apenas alguien arrastra el mapa, porque en ese momento la intención
+  // es mirar otra parte y pelearle la cámara sería insoportable.
+  const [following, setFollowing] = useState(false);
+  const [locating, setLocating] = useState(false);
 
   const { categories } = useCategories();
   const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm, categorySlug, orderBy: 'distance' });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
   const clusters = useMemo(() => clusterEvents(events), [events]);
   const zoom = useMemo(() => radiusKmToZoom(radiusKm), [radiusKm]);
-  const markers = useMemo<MapMarkerSpec[]>(() => {
-    const clusterMarkers: MapMarkerSpec[] = clusters.map((cluster) => ({
-      id: cluster.key,
-      kind: 'photo',
-      lat: cluster.lat,
-      lng: cluster.lng,
-      photoUrl: cluster.events[0].coverImageUrl,
-      badge: cluster.events.length,
-    }));
-    if (origin.isCurrentLocation) {
-      clusterMarkers.push({ id: 'me', kind: 'dot', lat: origin.lat, lng: origin.lng, color: colors.accent });
+  // Ya no se dibuja un marcador propio de "estás acá": lo hace el mapa
+  // nativo con <UserLocation/>, que lo mueve en el hilo nativo y además
+  // muestra el círculo de precisión real en vez de un punto que pretende
+  // precisión infinita.
+  const markers = useMemo<MapMarkerSpec[]>(
+    () =>
+      clusters.map((cluster) => ({
+        id: cluster.key,
+        kind: 'photo',
+        lat: cluster.lat,
+        lng: cluster.lng,
+        photoUrl: cluster.events[0].coverImageUrl,
+        badge: cluster.events.length,
+      })),
+    [clusters]
+  );
+
+  const handleLocatePress = async () => {
+    if (following) {
+      setFollowing(false);
+      return;
     }
-    return clusterMarkers;
-  }, [clusters, origin]);
+    setLocating(true);
+    try {
+      // Pide el permiso si todavía no lo tiene y actualiza el origen del
+      // feed, para que la lista de fiestas quede en sintonía con el mapa.
+      await requestPermissionAndLocate();
+      setFollowing(true);
+    } finally {
+      setLocating(false);
+    }
+  };
   const clustersByKey = useMemo(() => new Map(clusters.map((c) => [c.key, c])), [clusters]);
 
   if (!isSupabaseConfigured) {
@@ -90,6 +115,9 @@ export default function MapScreen() {
           center={{ lat: origin.lat, lng: origin.lng }}
           zoom={zoom}
           markers={markers}
+          showUserLocation
+          trackUser={following ? 'heading' : undefined}
+          onUserPanStart={() => setFollowing(false)}
           onMarkerPress={(id) => {
             const cluster = clustersByKey.get(id);
             if (cluster) setSelectedCluster(cluster);
@@ -101,6 +129,24 @@ export default function MapScreen() {
             <LoadingState />
           </View>
         )}
+
+        <Pressable
+          style={[styles.locateButton, following && styles.locateButtonActive]}
+          onPress={handleLocatePress}
+          disabled={locating}
+          accessibilityRole="button"
+          accessibilityLabel={following ? 'Dejar de seguir mi ubicación' : 'Centrar en mi ubicación'}
+        >
+          {locating ? (
+            <ActivityIndicator size="small" color={following ? colors.accentText : colors.accent} />
+          ) : (
+            <Ionicons
+              name={following ? 'navigate' : 'navigate-outline'}
+              size={20}
+              color={following ? colors.accentText : colors.accent}
+            />
+          )}
+        </Pressable>
 
         <Pressable style={styles.listToggle} onPress={() => router.push('/(tabs)/discover')}>
           <Ionicons name="list" size={16} color={colors.textPrimary} />
@@ -152,6 +198,25 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     paddingHorizontal: spacing.md,
   },
+  locateButton: {
+    position: 'absolute',
+    right: spacing.lg,
+    bottom: spacing.lg + 48,
+    width: 48,
+    height: 48,
+    borderRadius: radii.pill,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: '#000',
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 5,
+  },
+  locateButtonActive: { backgroundColor: colors.accent, borderColor: colors.accent },
   listToggle: {
     position: 'absolute',
     bottom: spacing.lg,

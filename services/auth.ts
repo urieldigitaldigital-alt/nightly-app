@@ -68,10 +68,76 @@ export async function signUp({ email, password, username, displayName, birthdate
   return data;
 }
 
-export async function signIn(email: string, password: string) {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return data;
+/** Un identificador con arroba es un email; sin arroba, un nombre de usuario. */
+function looksLikeEmail(identifier: string): boolean {
+  return identifier.includes('@');
+}
+
+/**
+ * Inicio de sesión con email **o** con nombre de usuario.
+ *
+ * Con email va derecho contra Supabase Auth, como siempre. Con nombre de
+ * usuario pasa por la Edge Function `login`, que resuelve el email del lado
+ * del servidor y lo usa sin devolverlo nunca — si esa traducción se hiciera
+ * acá, cualquiera podría recorrer nombres de usuario para juntar direcciones
+ * de correo ajenas.
+ */
+export async function signIn(identifier: string, password: string) {
+  const trimmed = identifier.trim();
+
+  if (looksLikeEmail(trimmed)) {
+    const { data, error } = await supabase.auth.signInWithPassword({ email: trimmed, password });
+    if (error) throw error;
+    return data;
+  }
+
+  const { data, error } = await supabase.functions.invoke('login', {
+    body: { identifier: trimmed.toLowerCase(), password },
+  });
+
+  // `invoke` trata cualquier respuesta 4xx/5xx como error y deja el cuerpo
+  // dentro de `error.context`, así que el mensaje real hay que sacarlo de ahí.
+  if (error) {
+    const detail = await readFunctionError(error);
+    if (detail === 'EMAIL_NOT_CONFIRMED') throw new Error('Email not confirmed');
+    throw new Error(detail ?? 'Usuario o contraseña incorrectos.');
+  }
+
+  if (!data?.access_token || !data?.refresh_token) {
+    throw new Error('Usuario o contraseña incorrectos.');
+  }
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
+    access_token: data.access_token,
+    refresh_token: data.refresh_token,
+  });
+  if (sessionError) throw sessionError;
+  return sessionData;
+}
+
+async function readFunctionError(error: unknown): Promise<string | null> {
+  const context = (error as { context?: Response })?.context;
+  if (!context || typeof context.json !== 'function') return null;
+  try {
+    const payload = await context.json();
+    return typeof payload?.error === 'string' ? payload.error : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * ¿Está libre este nombre de usuario?
+ *
+ * Ante cualquier problema de red devuelve `true`: la base tiene la
+ * restricción de unicidad y es la que decide de verdad al registrarse. Esta
+ * consulta es solo para avisar antes, así que un fallo acá no tiene por qué
+ * bloquear a alguien que eligió un nombre perfectamente válido.
+ */
+export async function isUsernameAvailable(username: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc('is_username_available', { p_username: username.trim().toLowerCase() });
+  if (error) return true;
+  return data === true;
 }
 
 /** "Continuar con Google". Google never gives us a real birthdate, so a
@@ -140,6 +206,20 @@ export async function signInWithApple() {
   const fullName = [credential.fullName?.givenName, credential.fullName?.familyName].filter(Boolean).join(' ').trim();
   if (fullName) {
     await updateMyProfile({ displayName: fullName }).catch(() => {});
+  }
+
+  // Canje del authorizationCode por un refresh token, que es lo único que
+  // después permite revocar el permiso del lado de Apple cuando la persona
+  // elimina su cuenta (ver supabase/functions/apple-link). El código vence
+  // en minutos y sirve una sola vez, así que tiene que ser acá y ahora.
+  //
+  // `catch` silencioso y sin `await` bloqueante en el camino feliz: esto es
+  // una mejora de cumplimiento, no parte del login. Si falla, la persona
+  // igual entró.
+  if (credential.authorizationCode) {
+    supabase.functions
+      .invoke('apple-link', { body: { authorizationCode: credential.authorizationCode } })
+      .catch(() => {});
   }
 }
 

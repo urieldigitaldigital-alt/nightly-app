@@ -1,145 +1,48 @@
-import { ComponentType, useEffect, useMemo, useRef } from 'react';
-import { StyleSheet } from 'react-native';
-import RNWebView from 'react-native-webview';
-import type { AppMapProps } from './AppMap.types';
+import { useEffect, useMemo, useRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { Image } from 'expo-image';
+import { Camera, type CameraRef, GeoJSONSource, Layer, Map, Marker, UserLocation } from '@maplibre/maplibre-react-native';
+import type { StyleSpecification } from '@maplibre/maplibre-gl-style-spec';
+import { colors } from '@/constants/theme';
+import type { AppMapProps, MapMarkerSpec } from './AppMap.types';
 import { UBER_MAP_STYLE } from './uberMapStyle';
 
-// react-native-webview's class-generic typing resolves to a `never` props
-// type when used un-parameterized in JSX (a known quirk of its .d.ts) — cast
-// once here instead of sprinkling `as any` through the component below.
-const WebView = RNWebView as unknown as ComponentType<any>;
+/**
+ * Mapa nativo (MapLibre Native) — el mismo que usan por dentro las apps de
+ * navegación serias.
+ *
+ * Reemplazó a una implementación anterior que metía maplibre-gl JS dentro de
+ * un WebView y lo descargaba de unpkg en cada arranque. Eso traía tres
+ * problemas que un mapa nativo no tiene: dependía de un CDN externo en
+ * tiempo de ejecución (sin internet o detrás de un firewall, pantalla negra),
+ * cada gesto y cada marcador cruzaban el puente de JavaScript, y la ubicación
+ * del usuario había que dibujarla a mano desde JS en vez de dejársela al
+ * sistema.
+ *
+ * El punto de "estás acá" y el seguimiento de cámara ahora los maneja el
+ * mapa nativo: se mueven a 60fps aunque el hilo de JavaScript esté ocupado,
+ * que es exactamente la diferencia entre un mapa y un GPS.
+ */
 
-// Dark, tilted 3D map (Uber-style): MapLibre GL JS (free, open-source WebGL
-// renderer) pulling vector tiles from OpenFreeMap (free, unlimited, no API
-// key — see uberMapStyle.ts), rendered inside a WebView since MapLibre needs
-// WebGL and there's no React Native binding for it.
-function buildHtml(center: { lat: number; lng: number }, zoom: number, pitch: number, bearing: number): string {
-  return `<!DOCTYPE html>
-<html>
-<head>
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.css" />
-<style>
-  html, body, #map { height: 100%; margin: 0; padding: 0; background: #0e1521; }
-  .maplibregl-ctrl-attrib { font-size: 9px; }
-</style>
-</head>
-<body>
-<div id="map"></div>
-<script src="https://unpkg.com/maplibre-gl@4/dist/maplibre-gl.js"></script>
-<script>
-  var map = new maplibregl.Map({
-    container: 'map',
-    style: ${JSON.stringify(UBER_MAP_STYLE)},
-    center: [${center.lng}, ${center.lat}],
-    zoom: ${zoom},
-    pitch: ${pitch},
-    bearing: ${bearing},
-    attributionControl: true,
-  });
+// El estilo es un objeto MapLibre válido (ver uberMapStyle.ts); el cast es
+// solo para que TypeScript lo reconozca como la especificación completa.
+const MAP_STYLE = UBER_MAP_STYLE as unknown as StyleSpecification;
 
-  var markersById = {};
-
-  function post(msg) { window.ReactNativeWebView.postMessage(JSON.stringify(msg)); }
-
-  function makeEl(m) {
-    var el = document.createElement('div');
-    if (m.kind === 'photo') {
-      el.innerHTML =
-        '<div style="width:48px;height:48px;border-radius:24px;background:#fff;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.5);overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;">' +
-        (m.photoUrl
-          ? '<img src="' + m.photoUrl + '" style="width:100%;height:100%;object-fit:cover;border-radius:21px;" />'
-          : '<div style="width:100%;height:100%;background:#2a2a2a;border-radius:21px;"></div>') +
-        (m.badge && m.badge > 1
-          ? '<div style="position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#ACFF2F;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;padding:0 4px;color:#111;">' +
-            m.badge +
-            '</div>'
-          : '') +
-        '</div>';
-    } else if (m.heading != null) {
-      // Directional "you are here" arrow — points true north at rotation 0;
-      // rotationAlignment:'map' on the Marker keeps it correctly oriented as
-      // the map itself rotates to track the device's heading.
-      el.innerHTML =
-        '<div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid ' +
-        (m.color || '#ACFF2F') +
-        ';filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6));"></div>';
-    } else {
-      el.innerHTML =
-        '<div style="width:16px;height:16px;border-radius:8px;background:' +
-        (m.color || '#ACFF2F') +
-        ';border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.6);"></div>';
-    }
-    el.style.cursor = 'pointer';
-    return el;
-  }
-
-  function renderMarkers(markers) {
-    var seen = {};
-    markers.forEach(function (m) {
-      seen[m.id] = true;
-      var existing = markersById[m.id];
-      if (existing) {
-        existing.setLngLat([m.lng, m.lat]);
-        if (m.kind === 'dot' && m.heading != null) existing.setRotation(m.heading);
-        return;
-      }
-      var el = makeEl(m);
-      el.addEventListener('click', function (e) { e.stopPropagation(); post({ type: 'markerPress', id: m.id }); });
-      var marker = new maplibregl.Marker({
-        element: el,
-        draggable: !!m.draggable,
-        anchor: m.kind === 'photo' ? 'bottom' : 'center',
-        rotationAlignment: m.kind === 'dot' && m.heading != null ? 'map' : 'viewport',
-      })
-        .setLngLat([m.lng, m.lat])
-        .addTo(map);
-      if (m.kind === 'dot' && m.heading != null) marker.setRotation(m.heading);
-      if (m.draggable) {
-        marker.on('dragend', function () {
-          var pos = marker.getLngLat();
-          post({ type: 'markerDragEnd', id: m.id, lat: pos.lat, lng: pos.lng });
-        });
-      }
-      markersById[m.id] = marker;
-    });
-    Object.keys(markersById).forEach(function (id) {
-      if (!seen[id]) { markersById[id].remove(); delete markersById[id]; }
-    });
-  }
-
-  function renderRoute(route, color) {
-    var coords = (route || []).map(function (p) { return [p.lng, p.lat]; });
-    var geojson = { type: 'Feature', geometry: { type: 'LineString', coordinates: coords } };
-    var src = map.getSource('route');
-    if (src) {
-      src.setData(geojson);
-    } else if (coords.length > 1) {
-      map.addSource('route', { type: 'geojson', data: geojson });
-      map.addLayer({
-        id: 'route',
-        type: 'line',
-        source: 'route',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': color || '#ACFF2F', 'line-width': 4 },
-      });
-    }
-  }
-
-  map.on('click', function (e) { post({ type: 'mapPress', lat: e.lngLat.lat, lng: e.lngLat.lng }); });
-  map.on('load', function () { post({ type: 'ready' }); });
-  map.on('dragstart', function (e) { if (e.originalEvent) post({ type: 'userPanStart' }); });
-
-  window.updateMarkers = renderMarkers;
-  window.updateRoute = renderRoute;
-  window.setMapView = function (lat, lng, z, p, b, animate) {
-    var opts = { center: [lng, lat], zoom: z, pitch: p, bearing: b };
-    if (animate) map.easeTo(Object.assign({ duration: 900 }, opts));
-    else map.jumpTo(opts);
-  };
-</script>
-</body>
-</html>`;
+function PhotoMarker({ marker }: { marker: Extract<MapMarkerSpec, { kind: 'photo' }> }) {
+  return (
+    <View style={styles.photoMarker}>
+      {marker.photoUrl ? (
+        <Image source={{ uri: marker.photoUrl }} style={styles.photoMarkerImage} contentFit="cover" />
+      ) : (
+        <View style={[styles.photoMarkerImage, styles.photoMarkerFallback]} />
+      )}
+      {marker.badge != null && marker.badge > 1 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{marker.badge}</Text>
+        </View>
+      )}
+    </View>
+  );
 }
 
 export default function AppMapNative({
@@ -152,65 +55,168 @@ export default function AppMapNative({
   markers = [],
   route,
   routeColor,
+  showUserLocation = false,
+  trackUser,
   onMarkerPress,
   onMapPress,
-  onMarkerDragEnd,
   onUserPanStart,
 }: AppMapProps) {
-  const webviewRef = useRef<any>(null);
-  const readyRef = useRef(false);
-  // Built once from the initial center/zoom/pitch — later changes go through
-  // setMapView via injectJavaScript instead of reloading the whole page.
-  const html = useMemo(() => buildHtml(center, zoom, pitch, bearing), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const cameraRef = useRef<CameraRef>(null);
+  // La cámara se mueve por ref y no por props para poder elegir entre
+  // `jumpTo` y `easeTo` según el caso. Re-renderizar un <Camera/> con valores
+  // nuevos en cada tick de GPS encolaría una animación arriba de la otra y el
+  // mapa se vería temblando.
+  const hasPositionedRef = useRef(false);
 
   useEffect(() => {
-    if (!readyRef.current) return;
-    webviewRef.current?.injectJavaScript(`window.setMapView(${center.lat}, ${center.lng}, ${zoom}, ${pitch}, ${bearing}, ${animate}); true;`);
-  }, [center.lat, center.lng, zoom, pitch, bearing, animate]);
+    // Mientras el mapa sigue a la persona, mandarle también un centro desde
+    // JavaScript pelearía con el seguimiento nativo.
+    if (trackUser) return;
 
-  useEffect(() => {
-    if (!readyRef.current) return;
-    webviewRef.current?.injectJavaScript(`window.updateMarkers(${JSON.stringify(markers)}); true;`);
-  }, [markers]);
+    const stop = { center: [center.lng, center.lat] as [number, number], zoom, pitch, bearing };
 
-  useEffect(() => {
-    if (!readyRef.current) return;
-    webviewRef.current?.injectJavaScript(`window.updateRoute(${JSON.stringify(route ?? [])}, ${JSON.stringify(routeColor ?? null)}); true;`);
-  }, [route, routeColor]);
-
-  const handleMessage = (event: { nativeEvent: { data: string } }) => {
-    try {
-      const msg = JSON.parse(event.nativeEvent.data);
-      if (msg.type === 'ready') {
-        readyRef.current = true;
-        webviewRef.current?.injectJavaScript(
-          `window.updateMarkers(${JSON.stringify(markers)}); window.updateRoute(${JSON.stringify(route ?? [])}, ${JSON.stringify(
-            routeColor ?? null
-          )}); true;`
-        );
-      } else if (msg.type === 'markerPress') {
-        onMarkerPress?.(msg.id);
-      } else if (msg.type === 'mapPress') {
-        onMapPress?.({ lat: msg.lat, lng: msg.lng });
-      } else if (msg.type === 'markerDragEnd') {
-        onMarkerDragEnd?.(msg.id, { lat: msg.lat, lng: msg.lng });
-      } else if (msg.type === 'userPanStart') {
-        onUserPanStart?.();
-      }
-    } catch {
-      // ignore malformed messages
+    // El primer posicionamiento siempre es instantáneo: animar desde el
+    // centro por defecto del mapa hasta la ubicación real sería un vuelo de
+    // medio mundo cada vez que se abre la pantalla.
+    if (!hasPositionedRef.current || !animate) {
+      cameraRef.current?.jumpTo(stop);
+      hasPositionedRef.current = true;
+      return;
     }
-  };
+
+    cameraRef.current?.easeTo({ ...stop, duration: 600 });
+  }, [center.lat, center.lng, zoom, pitch, bearing, animate, trackUser]);
+
+  const routeGeoJSON = useMemo(
+    () => ({
+      type: 'Feature' as const,
+      properties: {},
+      geometry: {
+        type: 'LineString' as const,
+        coordinates: (route ?? []).map((point) => [point.lng, point.lat]),
+      },
+    }),
+    [route]
+  );
 
   return (
-    <WebView
-      ref={webviewRef}
-      source={{ html }}
+    <Map
       style={[StyleSheet.absoluteFill, style]}
-      onMessage={handleMessage}
-      javaScriptEnabled
-      domStorageEnabled
-      originWhitelist={['*']}
-    />
+      mapStyle={MAP_STYLE}
+      // El logo y la atribución de MapLibre son obligatorios por licencia de
+      // los datos (OpenStreetMap vía OpenFreeMap). Se dejan arriba a la
+      // izquierda porque abajo van los controles de la app.
+      logo
+      logoPosition={{ top: 8, left: 8 }}
+      attribution
+      attributionPosition={{ top: 8, left: 64 }}
+      compass={Boolean(trackUser)}
+      compassPosition={{ top: 8, right: 8 }}
+      onPress={(event) => {
+        const [lng, lat] = event.nativeEvent.lngLat;
+        onMapPress?.({ lat, lng });
+      }}
+      onRegionWillChange={(event) => {
+        // `userInteraction` separa el arrastre de un dedo de nuestros propios
+        // movimientos de cámara. Sin ese filtro, cada recentrado automático
+        // se interpretaría como "el usuario movió el mapa" y el modo
+        // seguimiento se apagaría solo a cada paso.
+        if (event.nativeEvent.userInteraction) onUserPanStart?.();
+      }}
+    >
+      {/* Mientras hay seguimiento, el centro y el rumbo los pone el mapa
+          nativo a partir del GPS, pero el zoom y la inclinación los sigue
+          decidiendo la pantalla — la navegación, por ejemplo, se acerca al
+          llegar a una maniobra. Por eso van como props declarativas acá y no
+          por el ref: así conviven con el seguimiento en vez de pisarlo. */}
+      <Camera
+        ref={cameraRef}
+        initialViewState={{ center: [center.lng, center.lat], zoom, pitch, bearing }}
+        trackUserLocation={trackUser}
+        {...(trackUser ? { zoom, pitch, duration: 500, easing: 'linear' as const } : {})}
+      />
+
+      {showUserLocation && <UserLocation animated accuracy heading={trackUser === 'heading'} minDisplacement={2} />}
+
+      {route && route.length > 1 && (
+        <GeoJSONSource id="route" data={routeGeoJSON}>
+          {/* Dos capas: una línea ancha oscura debajo y la del color de marca
+              encima. Es lo que mantiene la ruta legible sobre un mapa oscuro,
+              donde una línea sola se confunde con las avenidas. */}
+          <Layer id="route-casing" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#000000', 'line-width': 9, 'line-opacity': 0.5 }} />
+          <Layer
+            id="route-line"
+            type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': routeColor ?? colors.accent, 'line-width': 5 }}
+          />
+        </GeoJSONSource>
+      )}
+
+      {markers.map((marker) =>
+        marker.kind === 'photo' ? (
+          <Marker
+            key={marker.id}
+            id={marker.id}
+            lngLat={[marker.lng, marker.lat]}
+            anchor="bottom"
+            onPress={() => onMarkerPress?.(marker.id)}
+          >
+            <PhotoMarker marker={marker} />
+          </Marker>
+        ) : (
+          <Marker key={marker.id} id={marker.id} lngLat={[marker.lng, marker.lat]} onPress={() => onMarkerPress?.(marker.id)}>
+            <View style={[styles.dot, { backgroundColor: marker.color ?? colors.accent }]} />
+          </Marker>
+        )
+      )}
+    </Map>
   );
 }
+
+const styles = StyleSheet.create({
+  photoMarker: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.white,
+    borderWidth: 3,
+    borderColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  photoMarkerImage: { width: '100%', height: '100%', borderRadius: 21 },
+  photoMarkerFallback: { backgroundColor: colors.surfaceRaised },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 4,
+    backgroundColor: colors.accent,
+    borderWidth: 2,
+    borderColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: colors.accentText, fontSize: 11, fontWeight: '700' },
+  dot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 3,
+    borderColor: colors.white,
+    shadowColor: '#000',
+    shadowOpacity: 0.6,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 3,
+  },
+});

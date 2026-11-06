@@ -11,8 +11,16 @@ import { queryClient } from '@/lib/queryClient';
 import { useAuthStore } from '@/stores/authStore';
 import { colors } from '@/constants/theme';
 import { SplashAnimation } from '@/components/SplashAnimation';
+import { OfflineBanner } from '@/components/OfflineBanner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useChatOutboxFlush } from '@/hooks/useChatOutboxFlush';
+
+/**
+ * Expo Router busca este export por nombre en los archivos de layout: con él
+ * acá, cualquier error de render en cualquier pantalla cae en la pantalla de
+ * error de la app en vez de cerrarla. Ver components/AppErrorBoundary.tsx.
+ */
+export { AppErrorBoundary as ErrorBoundary } from '@/components/AppErrorBoundary';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -59,11 +67,15 @@ export default function RootLayout() {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === '(auth)';
-    // Public route: reached via the password-reset email link, which may or
-    // may not carry a valid session (expired/already-used links land here
-    // with none) — the screen itself handles both cases, so the guard must
-    // not redirect away before it gets to render that.
-    const isPublicRoute = segments[0] === 'reset-password';
+    // Rutas que se pueden ver sin sesión:
+    // - reset-password: se llega por el link del mail de recuperación, que
+    //   puede o no traer una sesión válida (los links vencidos o ya usados
+    //   llegan sin ninguna) — la pantalla maneja los dos casos, así que el
+    //   guard no puede redirigir antes de que alcance a renderizarlo.
+    // - community-guidelines: se enlaza desde el registro, o sea antes de que
+    //   exista una cuenta. Mandar a welcome a quien toca "Normas de la
+    //   comunidad" sería perder los datos que ya cargó en el formulario.
+    const isPublicRoute = segments[0] === 'reset-password' || segments[0] === 'community-guidelines';
 
     if (!session && !inAuthGroup && !isPublicRoute) {
       router.replace('/(auth)/welcome');
@@ -114,6 +126,10 @@ export default function RootLayout() {
               <Stack.Screen name="chat/[id]" options={{ presentation: 'card' }} />
             </Stack>
           </Animated.View>
+          {/* Después del contenido para quedar por encima de cualquier
+              pantalla, pero antes del splash: durante la animación de
+              arranque no hay nada que la franja pueda aclarar. */}
+          <OfflineBanner />
           {!introDone && <SplashAnimation ready={!loading} onFinish={handleIntroFinish} />}
         </QueryClientProvider>
       </SafeAreaProvider>

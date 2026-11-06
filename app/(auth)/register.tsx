@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -7,7 +7,15 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { colors, spacing, typography } from '@/constants/theme';
 import { brand } from '@/constants/brand';
-import { signUp } from '@/services/auth';
+import { userFacingError } from '@/lib/errors';
+import { isUsernameAvailable, signUp } from '@/services/auth';
+
+const USERNAME_FORMAT = /^[a-z0-9_.]{3,24}$/;
+
+/** Espera entre que dejás de tipear y la consulta, para no pegarle a la base por cada tecla. */
+const USERNAME_CHECK_DELAY_MS = 450;
+
+type UsernameState = { status: 'idle' | 'checking' | 'available' | 'taken' | 'invalid'; message?: string };
 
 function isAdult(day: string, month: string, year: string): boolean {
   const d = Number(day);
@@ -32,6 +40,52 @@ export default function RegisterScreen() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  // Aceptación separada de la de los Términos, y no una sola casilla que
+  // junte todo: la Guideline 1.2 de Apple pide que la persona acepte de forma
+  // explícita que no hay tolerancia con el contenido objetable ni con los
+  // usuarios abusivos. Enterrarlo dentro de "acepto los términos" no cuenta.
+  const [acceptedConduct, setAcceptedConduct] = useState(false);
+  const [usernameState, setUsernameState] = useState<UsernameState>({ status: 'idle' });
+
+  // Comprobación mientras escribe, con una espera para no consultar en cada
+  // tecla. Enterarse de que el nombre está ocupado recién al tocar "Crear
+  // cuenta" — con el formulario entero ya completo — es la peor versión de
+  // este error.
+  useEffect(() => {
+    const candidate = username.trim().toLowerCase();
+
+    if (!candidate) {
+      setUsernameState({ status: 'idle' });
+      return;
+    }
+    if (!USERNAME_FORMAT.test(candidate)) {
+      setUsernameState({
+        status: 'invalid',
+        message: 'Solo minúsculas, números, puntos y guiones bajos (3 a 24 caracteres).',
+      });
+      return;
+    }
+
+    setUsernameState({ status: 'checking' });
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const available = await isUsernameAvailable(candidate);
+      // Si el texto cambió mientras la consulta viajaba, la respuesta ya no
+      // corresponde a lo que hay en pantalla.
+      if (cancelled) return;
+      setUsernameState(
+        available
+          ? { status: 'available', message: `@${candidate} está disponible` }
+          : { status: 'taken', message: `@${candidate} ya está en uso. Probá con otro.` }
+      );
+    }, USERNAME_CHECK_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [username]);
 
   const handleSubmit = async () => {
     setError(null);
@@ -44,8 +98,16 @@ export default function RegisterScreen() {
       setError('Tenés que aceptar los Términos de uso y la Política de privacidad para continuar.');
       return;
     }
-    if (!/^[a-z0-9_.]{3,24}$/.test(username)) {
+    if (!acceptedConduct) {
+      setError('Tenés que aceptar las Normas de la comunidad para continuar.');
+      return;
+    }
+    if (!USERNAME_FORMAT.test(username)) {
       setError('El usuario solo puede tener minúsculas, números, puntos y guiones bajos (3-24 caracteres).');
+      return;
+    }
+    if (usernameState.status === 'taken') {
+      setError(`El usuario @${username.trim().toLowerCase()} ya está en uso. Elegí otro.`);
       return;
     }
     if (password.length < 8) {
@@ -70,8 +132,8 @@ export default function RegisterScreen() {
         // enter it.
         router.push({ pathname: '/(auth)/verify-email', params: { email } });
       }
-    } catch (e: any) {
-      setError(translateAuthError(e?.message));
+    } catch (e: unknown) {
+      setError(userFacingError(e, 'No pudimos crear tu cuenta. Probá de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -89,13 +151,35 @@ export default function RegisterScreen() {
 
         <View style={styles.form}>
           <Input label="Nombre para mostrar" placeholder="Cómo te ven los demás" value={displayName} onChangeText={setDisplayName} />
-          <Input
-            label="Usuario"
-            placeholder="tu_usuario"
-            autoCapitalize="none"
-            value={username}
-            onChangeText={(t) => setUsername(t.toLowerCase())}
-          />
+          <View>
+            <Input
+              label="Usuario"
+              placeholder="tu_usuario"
+              autoCapitalize="none"
+              autoCorrect={false}
+              value={username}
+              onChangeText={(t) => setUsername(t.toLowerCase())}
+            />
+            {usernameState.status !== 'idle' && (
+              <View style={styles.usernameStatus}>
+                {usernameState.status === 'checking' ? (
+                  <>
+                    <ActivityIndicator size="small" color={colors.textMuted} />
+                    <Text style={styles.usernameChecking}>Verificando...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons
+                      name={usernameState.status === 'available' ? 'checkmark-circle' : 'close-circle'}
+                      size={15}
+                      color={usernameState.status === 'available' ? colors.success : colors.danger}
+                    />
+                    <Text style={usernameState.status === 'available' ? styles.usernameOk : styles.usernameBad}>{usernameState.message}</Text>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
           <Input
             label="Email"
             placeholder="vos@email.com"
@@ -138,20 +222,29 @@ export default function RegisterScreen() {
             </Text>
           </Pressable>
 
+          <Pressable style={styles.confirmRow} onPress={() => setAcceptedConduct((v) => !v)}>
+            <Ionicons
+              name={acceptedConduct ? 'checkbox' : 'square-outline'}
+              size={22}
+              color={acceptedConduct ? colors.accent : colors.textMuted}
+            />
+            <Text style={styles.confirmText}>
+              Entiendo que {brand.name} tiene <Text style={styles.strong}>tolerancia cero</Text> con el contenido objetable y los usuarios
+              abusivos, y acepto las{' '}
+              <Text style={styles.link} onPress={() => router.push('/community-guidelines')}>
+                Normas de la comunidad
+              </Text>
+              .
+            </Text>
+          </Pressable>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          <Button label="Crear cuenta" onPress={handleSubmit} loading={loading} disabled={!acceptedTerms} />
+          <Button label="Crear cuenta" onPress={handleSubmit} loading={loading} disabled={!acceptedTerms || !acceptedConduct} />
         </View>
       </ScrollView>
     </Screen>
   );
-}
-
-function translateAuthError(message?: string): string {
-  if (!message) return 'Algo salió mal. Probá de nuevo.';
-  if (message.includes('already registered')) return 'Ese email ya tiene una cuenta. Probá iniciar sesión.';
-  if (message.includes('duplicate key') && message.includes('username')) return 'Ese usuario ya está en uso.';
-  return message;
 }
 
 const styles = StyleSheet.create({
@@ -178,8 +271,13 @@ const styles = StyleSheet.create({
   dobInput: { width: 64 },
   dobInputYear: { width: 90 },
   hint: { color: colors.textMuted, fontSize: typography.size.xs, marginTop: spacing.xxs },
+  usernameStatus: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, marginTop: spacing.xxs },
+  usernameChecking: { color: colors.textMuted, fontSize: typography.size.xs },
+  usernameOk: { color: colors.success, fontSize: typography.size.xs, fontWeight: typography.weight.medium },
+  usernameBad: { flex: 1, color: colors.danger, fontSize: typography.size.xs, fontWeight: typography.weight.medium },
   error: { color: colors.danger, fontSize: typography.size.sm },
   confirmRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs },
   confirmText: { flex: 1, color: colors.textSecondary, fontSize: typography.size.sm, lineHeight: 20 },
   link: { color: colors.accent, fontWeight: typography.weight.medium },
+  strong: { color: colors.textPrimary, fontWeight: typography.weight.semibold },
 });

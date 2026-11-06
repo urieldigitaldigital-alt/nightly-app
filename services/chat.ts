@@ -1,5 +1,6 @@
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { ContentBlockedError, moderateText } from '@/lib/moderation';
 import { getChatImageUrls } from '@/services/storage';
 import { Conversation, Message } from '@/types/models';
 
@@ -133,6 +134,14 @@ export async function sendMessage(conversationId: string, body: string | null, i
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error('NOT_AUTHENTICATED');
+
+  // Se revisa antes de llegar a la red para que el mensaje rechazado no
+  // consuma un viaje de ida y vuelta ni quede en el outbox reintentándose
+  // para siempre — el trigger de `messages` lo rechazaría igual.
+  if (body) {
+    const check = moderateText(body);
+    if (!check.ok) throw new ContentBlockedError(check.message, 'body');
+  }
 
   const { data, error } = await supabase
     .from('messages')

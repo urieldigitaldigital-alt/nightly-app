@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { EventDetailSkeleton } from '@/components/event/EventDetailSkeleton';
+import { SafetyOption, UserSafetySheet } from '@/components/safety/UserSafetySheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useEventDetail } from '@/hooks/useEventDetail';
@@ -42,6 +43,7 @@ export default function EventDetailScreen() {
   // Android phones under 400px), breaking the horizontal paging.
   const [galleryWidth, setGalleryWidth] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [safetyOpen, setSafetyOpen] = useState(false);
   const [showDniModal, setShowDniModal] = useState(false);
   const [dniPhotoUri, setDniPhotoUri] = useState<string | null>(null);
   const [dniError, setDniError] = useState<string | null>(null);
@@ -278,15 +280,32 @@ export default function EventDetailScreen() {
             <Ionicons name="share-outline" size={20} color={colors.white} />
           </Pressable>
           {!isOrganizer && (
-            <Pressable
-              style={styles.topBarButton}
-              onPress={() => router.push({ pathname: '/report', params: { targetType: 'event', targetId: event.id } })}
-            >
+            <Pressable style={styles.topBarButton} onPress={() => setSafetyOpen(true)} accessibilityLabel="Denunciar o bloquear">
               <Ionicons name="flag-outline" size={20} color={colors.white} />
             </Pressable>
           )}
         </View>
       </View>
+
+      {/* Denunciar la fiesta, denunciar al organizador o bloquearlo, todo
+          desde la fiesta misma: obligar a navegar al perfil para bloquear a
+          alguien es justo la fricción que la Guideline 1.2 busca evitar. */}
+      <UserSafetySheet
+        visible={safetyOpen}
+        onClose={() => setSafetyOpen(false)}
+        userId={event.organizer.id}
+        displayName={`@${event.organizer.username}`}
+        onBlocked={() => router.back()}
+      >
+        <SafetyOption
+          icon="flag-outline"
+          label="Denunciar esta fiesta"
+          onPress={() => {
+            setSafetyOpen(false);
+            router.push({ pathname: '/report', params: { targetType: 'event', targetId: event.id } });
+          }}
+        />
+      </UserSafetySheet>
 
       <BottomSheetModal visible={showDniModal} onClose={() => setShowDniModal(false)}>
         <View style={styles.modalCard}>

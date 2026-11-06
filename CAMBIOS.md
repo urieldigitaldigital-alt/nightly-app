@@ -107,5 +107,61 @@ Resumen por fase de todo lo agregado, modificado y eliminado rumbo al envío a r
 
 **Pendiente de tu parte**: correr la migración `0022_chat_images.sql` en el SQL Editor de Supabase (ver `PENDIENTES_MANUALES.md`).
 
+## Fase 6 — Preparación para la App Store
+
+Pasada completa sobre los motivos reales de rechazo, más mapa nativo y layout adaptable.
+
+**Cumplimiento de Apple — contenido generado por usuarios (Guideline 1.2)**
+
+Era el hueco más grande: Apple pide cuatro cosas para cualquier app con contenido de usuarios, y faltaban dos.
+
+- **Filtro de contenido objetable** (`lib/moderation.ts` + migración `0023`). Revisa nombres de fiestas, descripciones, reglas, biografías, nombres de usuario y mensajes. Normaliza el texto antes de comparar (saca acentos, traduce leetspeak como `p3d0f1l0`, aplasta el estiramiento de letras como `puuuuto` y atraviesa separadores como `p.u.t.o`), así que no se esquiva escribiendo raro. Dos niveles: lo inaceptable se rechaza en el momento, lo gris se publica pero abre un reporte automático para revisión. Corre también como trigger en la base, o sea que un cliente modificado no lo puede saltear. La lista de términos vive en una tabla editable sin deploy.
+  - Decisión explícita: el insulto coloquial rioplatense ("boludo", "pelotudo") **no** se filtra. El objetivo es el daño, no la grosería, y censurar el habla cotidiana volvería la app inusable. Hay 29 tests, y una buena parte son casos que *no* se tienen que bloquear.
+- **EULA de tolerancia cero**: casilla obligatoria y separada en el registro (`app/(auth)/register.tsx`), línea equivalente en el alta por Google/Apple (`app/(auth)/welcome.tsx`, que antes se saltaba la aceptación por completo), pantalla permanente de Normas de la comunidad dentro de la app (`app/community-guidelines.tsx`, legible sin conexión) y sección 2 de los Términos reescritos.
+- **Bloquear desde el contenido**: el perfil público no tenía ni denuncia ni bloqueo. Ahora hay una hoja compartida (`components/safety/UserSafetySheet.tsx`) con confirmación en dos pasos, disponible desde el perfil, el chat y la fiesta.
+- **Denunciar un mensaje puntual**: mantener presionado un mensaje recibido. Antes, "Reportar" en el chat disparaba una denuncia sin motivo ni confirmación y sin avisarle nada al usuario; ahora pasa por la pantalla de denuncia normal.
+- **Compromiso de 24 horas**: escrito en los Términos y en las Normas, y operativo en `/admin` — la cola se ordena por antigüedad y las denuncias que pasaron las 24 horas se marcan en rojo.
+
+**Arreglado**
+
+- `stores/chatOutboxStore.ts`: un mensaje rechazado por el filtro se reintentaba para siempre en cada reconexión, porque la cola trataba todos los fallos como temporales. Ahora distingue el rechazo definitivo del problema de red: muestra el motivo y ofrece descartarlo.
+- `app/profile/edit.tsx`: si guardar fallaba, el spinner paraba y no pasaba nada más — el error era completamente silencioso.
+- `app/admin/index.tsx`: mostraba "Denunciado por @undefined" para cualquier denuncia sin denunciante.
+- **Mapa dependiente de un CDN**: el mapa cargaba MapLibre desde `unpkg.com` dentro de un WebView en cada arranque. Sin internet, con mala conexión o detrás de un firewall corporativo quedaba en negro — un rechazo por Guideline 2.1 esperando a pasar.
+
+**Mapa nativo con comportamiento de GPS**
+
+- Reemplazo del WebView por `@maplibre/maplibre-react-native`. Sin CDN, sin puente de JavaScript por gesto, renderizado nativo.
+- El punto de "estás acá" ahora lo dibuja el sistema: se mueve a 60fps entre fix y fix en vez de saltar de GPS en GPS, y muestra el círculo de precisión real.
+- Botón de "mi ubicación" en la pestaña Mapa, con modo seguimiento que rota con la brújula y se apaga solo al arrastrar el mapa.
+- La navegación paso a paso usa seguimiento *course-up* nativo (el mapa se orienta según hacia dónde te movés de verdad), y la ruta se dibuja con doble línea para que se lea sobre el mapa oscuro.
+
+**Diseño adaptable**
+
+- `hooks/useResponsive.ts`: breakpoints medidos contra el lado corto de la ventana, así un teléfono acostado sigue siendo un teléfono.
+- Feed en grilla de hasta 3 columnas en tablet y escritorio, que se recompone al rotar.
+- Las pantallas de texto y formularios se centran en una columna de ancho legible en vez de estirarse a todo el ancho de un iPad.
+- iPad: las cuatro orientaciones y Split View habilitados (`plugins/withTabletOrientations.js`); el iPhone queda en vertical.
+
+**Nombres de usuario y login** (pedido después de la primera pasada)
+
+- Aviso en vivo mientras se escribe: "@tu_usuario ya está en uso. Probá con otro", con una espera para no consultar en cada tecla. Antes el choque aparecía recién al tocar "Crear cuenta", con el formulario entero ya completo.
+- Lista de nombres reservados (`admin`, `soporte`, `afterdune`, nombres de rutas) que nadie puede tomar.
+- **Se puede iniciar sesión con el nombre de usuario**, no solo con el email. La traducción de usuario a email pasa del lado del servidor (Edge Function `login`) y el email nunca vuelve al cliente: una función que lo devolviera dejaría que cualquiera recorriera nombres de usuario para juntar direcciones de correo ajenas.
+
+**Resto del cumplimiento**
+
+- **Revocación del token de Apple al eliminar cuenta**, que estaba documentada como no implementada. Ahora está completa: el `authorizationCode` del login se canjea por un refresh token (Edge Function `apple-link`, tabla `apple_credentials` invisible para los clientes), y al borrar la cuenta se firma un JWT ES256 con la clave `.p8` y se llama al endpoint de revocación de Apple. Si faltan las credenciales, degrada sin romper el borrado.
+- **Privacy manifest** (`PrivacyInfo.xcprivacy`) con las cuatro APIs de razón requerida y los seis tipos de datos recolectados; verificado en el plist generado por prebuild.
+- `ITSAppUsesNonExemptEncryption = false`: evita el cuestionario de exportación en cada subida.
+- Android 13+: `POST_NOTIFICATIONS` y `READ_MEDIA_IMAGES`.
+- `lib/errors.ts`: un solo traductor de errores a castellano accionable, en vez de un "Algo salió mal" distinto por pantalla.
+- `components/AppErrorBoundary.tsx`: pantalla de error con botón de reintentar en lugar de un cierre inexplicable (Guideline 2.1).
+- `components/OfflineBanner.tsx`: aviso de sin conexión, para que estar sin internet no se parezca a que la app esté rota.
+- `scripts/seed-reviewer-demo.mjs`: cuenta demo con contenido real (fiesta publicada, solicitud pendiente, conversación con mensajes). Crea el contenido *como los usuarios*, pasando por las mismas RLS y triggers que cualquier persona.
+- `APP_STORE_CONNECT.md`: notas del revisor, descripción, keywords, clasificación de edad y respuestas de App Privacy, listos para copiar y pegar.
+
+**Pendiente de tu parte**: correr las migraciones `0019` a `0025`, desplegar las tres Edge Functions, cargar los secrets de Apple y hacer el build — ver `PENDIENTES_MANUALES.md`. El build nativo no se pudo compilar en esta Mac porque CocoaPods necesita Ruby ≥ 3.3 y el del sistema es 2.6.
+
 ---
 *Se completa al cierre de cada fase.*

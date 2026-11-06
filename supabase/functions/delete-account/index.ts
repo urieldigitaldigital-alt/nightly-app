@@ -9,13 +9,37 @@
 //
 // Deploy: supabase functions deploy delete-account
 // Requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to be set as function secrets.
+// Optional: APPLE_TEAM_ID / APPLE_KEY_ID / APPLE_CLIENT_ID / APPLE_PRIVATE_KEY
+// to also revoke the user's Sign in with Apple grant (see below).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
+import { readAppleConfig, revokeToken } from '../_shared/apple.ts';
 
 async function removeAllUnderPrefix(adminClient: ReturnType<typeof createClient>, bucket: string, prefix: string) {
   const { data: files, error } = await adminClient.storage.from(bucket).list(prefix);
   if (error || !files || files.length === 0) return;
   const paths = files.map((f) => `${prefix}/${f.name}`);
   await adminClient.storage.from(bucket).remove(paths);
+}
+
+async function revokeAppleGrantIfAny(adminClient: ReturnType<typeof createClient>, userId: string) {
+  const config = readAppleConfig();
+  if (!config) {
+    console.warn('delete-account: faltan las variables de entorno de Apple, no se revoca el permiso');
+    return;
+  }
+
+  const { data, error } = await adminClient.from('apple_credentials').select('refresh_token').eq('user_id', userId).maybeSingle();
+
+  if (error) {
+    console.error('delete-account: no se pudo leer el refresh token de Apple', error.message);
+    return;
+  }
+  // Sin fila: la persona nunca entró con Apple, o lo hizo antes de que
+  // existiera `apple-link`. No hay nada que revocar.
+  if (!data?.refresh_token) return;
+
+  const revoked = await revokeToken(config, data.refresh_token as string);
+  if (!revoked) console.error('delete-account: Apple rechazó la revocación para', userId);
 }
 
 Deno.serve(async (req) => {
@@ -57,13 +81,18 @@ Deno.serve(async (req) => {
     ...(ownedEvents ?? []).map((e) => removeAllUnderPrefix(adminClient, 'event-images', e.id)),
   ]);
 
-  // Apple Sign In token revocation: intentionally not implemented here.
-  // It requires the app's Apple private key (.p8) plus Team ID/Key ID to
-  // mint a client_secret JWT and call Apple's revoke endpoint, none of
-  // which exist in this environment — see PENDIENTES_MANUALES.md. Deleting
-  // the Supabase auth.users row (below) still fully removes the user's
-  // access to this app; the gap is only that Apple itself wouldn't be
-  // notified the grant was revoked.
+  // Revocación del permiso de Sign in with Apple.
+  //
+  // Apple lo exige para cualquier app que ofrezca su login y permita borrar
+  // la cuenta: no alcanza con borrar la cuenta de nuestro lado, hay que
+  // avisarle a Apple que el permiso ya no corre.
+  //
+  // Todo este bloque es best-effort a propósito. Si faltan las credenciales,
+  // si el usuario nunca entró con Apple, o si Apple responde mal, se deja
+  // constancia en el log y se sigue: que alguien no pueda eliminar su cuenta
+  // sería un incumplimiento peor (Guideline 5.1.1(v)) que no haber podido
+  // notificar la revocación.
+  await revokeAppleGrantIfAny(adminClient, user.id);
 
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
 

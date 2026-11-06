@@ -7,11 +7,15 @@ import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { AppleSignInButton } from '@/components/ui/AppleSignInButton';
 import { colors, spacing, typography } from '@/constants/theme';
+import { userFacingError } from '@/lib/errors';
 import { signIn, signInWithApple, signInWithGoogle } from '@/services/auth';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  // Un solo campo para las dos formas de entrar: pedirle a la gente que
+  // elija primero "¿email o usuario?" es fricción sin información, porque la
+  // presencia de una arroba ya lo dice.
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,23 +48,27 @@ export default function LoginScreen() {
 
   const handleSubmit = async () => {
     setError(null);
-    if (!email || !password) {
-      setError('Ingresá tu email y contraseña.');
+    if (!identifier.trim() || !password) {
+      setError('Ingresá tu email o usuario y tu contraseña.');
       return;
     }
     setLoading(true);
     try {
-      await signIn(email, password);
+      await signIn(identifier, password);
       // app/_layout.tsx's guard effect takes it from here (tabs vs onboarding).
     } catch (e: any) {
-      if (e?.message?.toLowerCase().includes('email not confirmed')) {
-        router.push({ pathname: '/(auth)/verify-email', params: { email } });
+      const message = String(e?.message ?? '');
+      if (message.toLowerCase().includes('email not confirmed')) {
+        // Solo se puede prellenar la pantalla de verificación si lo que
+        // escribieron era un email; entrando con usuario, el email nunca
+        // llega al cliente (ver la Edge Function `login`).
+        router.push({ pathname: '/(auth)/verify-email', params: identifier.includes('@') ? { email: identifier.trim() } : {} });
         return;
       }
       setError(
-        e?.message?.includes('Invalid login')
-          ? 'Email o contraseña incorrectos. Si te registraste con Google, usá "Continuar con Google" en vez de contraseña.'
-          : 'Algo salió mal. Probá de nuevo.'
+        message.includes('Invalid login') || message.includes('incorrectos')
+          ? 'Email, usuario o contraseña incorrectos. Si te registraste con Google, usá "Continuar con Google" en vez de contraseña.'
+          : userFacingError(e, 'No pudimos iniciar sesión. Probá de nuevo.')
       );
     } finally {
       setLoading(false);
@@ -77,7 +85,19 @@ export default function LoginScreen() {
       <Text style={styles.subtitle}>Iniciá sesión para seguir descubriendo.</Text>
 
       <View style={styles.form}>
-        <Input label="Email" autoCapitalize="none" keyboardType="email-address" value={email} onChangeText={setEmail} />
+        <Input
+          label="Email o usuario"
+          placeholder="vos@email.com o tu_usuario"
+          autoCapitalize="none"
+          autoCorrect={false}
+          // `email-address` fuerza un teclado con arroba y sin barra
+          // espaciadora en iOS, que molesta al escribir un nombre de usuario.
+          // `default` sirve para los dos casos.
+          keyboardType="default"
+          textContentType="username"
+          value={identifier}
+          onChangeText={setIdentifier}
+        />
         <Input label="Contraseña" secureTextEntry value={password} onChangeText={setPassword} />
 
         {error ? <Text style={styles.error}>{error}</Text> : null}

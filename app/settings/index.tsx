@@ -82,7 +82,14 @@ export default function SettingsScreen() {
 
         <Text style={styles.sectionTitle}>Legal</Text>
         <View style={styles.card}>
-          <Pressable style={styles.row} onPress={() => Linking.openURL(brand.termsUrl)}>
+          {/* Primero y dentro de la app, no como link al navegador: es la
+              pantalla que explica la tolerancia cero y las herramientas de
+              denuncia y bloqueo, y tiene que poder leerse sin conexión. */}
+          <Pressable style={styles.row} onPress={() => router.push('/community-guidelines')}>
+            <Text style={styles.rowLabel}>Normas de la comunidad</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </Pressable>
+          <Pressable style={[styles.row, styles.rowBorder]} onPress={() => Linking.openURL(brand.termsUrl)}>
             <Text style={styles.rowLabel}>Términos y condiciones</Text>
             <Ionicons name="open-outline" size={18} color={colors.textMuted} />
           </Pressable>

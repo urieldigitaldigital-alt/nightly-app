@@ -9,18 +9,25 @@ export function MessageBubble({
   isMine,
   onImagePress,
   onRetry,
+  onDiscard,
+  onLongPress,
 }: {
   message: Message;
   isMine: boolean;
   onImagePress?: (uri: string) => void;
   onRetry?: () => void;
+  onDiscard?: () => void;
+  /** Mantener presionado sobre un mensaje ajeno abre la opción de denunciarlo. */
+  onLongPress?: () => void;
 }) {
   const time = new Date(message.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
   const hasImage = Boolean(message.imageUrl);
   const isError = message.status === 'error';
+  const isRejected = message.status === 'rejected';
+  const isFailed = isError || isRejected;
 
   const content = (
-    <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs, hasImage && styles.bubbleImage, isError && styles.bubbleError]}>
+    <View style={[styles.bubble, isMine ? styles.bubbleMine : styles.bubbleTheirs, hasImage && styles.bubbleImage, isFailed && styles.bubbleError]}>
       {hasImage && (
         <Pressable onPress={() => message.imageUrl && onImagePress?.(message.imageUrl)} disabled={!message.imageUrl}>
           <Image source={{ uri: message.imageUrl! }} style={styles.image} contentFit="cover" />
@@ -32,20 +39,40 @@ export function MessageBubble({
 
   return (
     <View style={[styles.row, isMine ? styles.rowMine : styles.rowTheirs]}>
-      {isError ? <Pressable onPress={onRetry}>{content}</Pressable> : content}
-      <View style={styles.metaRow}>
-        {isError ? (
-          <Pressable style={styles.retryRow} onPress={onRetry} hitSlop={6}>
-            <Ionicons name="alert-circle" size={12} color={colors.danger} />
-            <Text style={styles.retryText}>No se envió · Reintentar</Text>
+      {isError ? (
+        <Pressable onPress={onRetry}>{content}</Pressable>
+      ) : onLongPress ? (
+        <Pressable onLongPress={onLongPress} delayLongPress={350} accessibilityHint="Mantené presionado para denunciar este mensaje">
+          {content}
+        </Pressable>
+      ) : (
+        content
+      )}
+      {/* Un mensaje rechazado por el filtro no se reintenta: repetir el envío
+          daría exactamente el mismo rechazo. Se explica el motivo y la única
+          salida es descartarlo. */}
+      {isRejected ? (
+        <View style={styles.rejectedBox}>
+          <Text style={styles.rejectedText}>{message.rejectedReason ?? 'Este mensaje va contra las normas de la comunidad.'}</Text>
+          <Pressable onPress={onDiscard} hitSlop={6}>
+            <Text style={styles.discardText}>Descartar</Text>
           </Pressable>
-        ) : (
-          <>
-            <Text style={styles.time}>{time}</Text>
-            {isMine && <MessageStatusIcon status={message.status} />}
-          </>
-        )}
-      </View>
+        </View>
+      ) : (
+        <View style={styles.metaRow}>
+          {isError ? (
+            <Pressable style={styles.retryRow} onPress={onRetry} hitSlop={6}>
+              <Ionicons name="alert-circle" size={12} color={colors.danger} />
+              <Text style={styles.retryText}>No se envió · Reintentar</Text>
+            </Pressable>
+          ) : (
+            <>
+              <Text style={styles.time}>{time}</Text>
+              {isMine && <MessageStatusIcon status={message.status} />}
+            </>
+          )}
+        </View>
+      )}
     </View>
   );
 }
@@ -74,4 +101,15 @@ const styles = StyleSheet.create({
   statusIcon: { marginLeft: 2 },
   retryRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   retryText: { color: colors.danger, fontSize: 10, fontWeight: typography.weight.medium },
+  rejectedBox: {
+    marginTop: 4,
+    marginHorizontal: 4,
+    gap: 4,
+    alignItems: 'flex-end',
+    borderRightWidth: 2,
+    borderRightColor: colors.danger,
+    paddingRight: spacing.xs,
+  },
+  rejectedText: { color: colors.danger, fontSize: 11, lineHeight: 15, textAlign: 'right' },
+  discardText: { color: colors.textSecondary, fontSize: 11, fontWeight: typography.weight.semibold, textDecorationLine: 'underline' },
 });

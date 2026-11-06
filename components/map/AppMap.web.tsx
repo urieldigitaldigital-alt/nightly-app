@@ -44,11 +44,6 @@ function makeEl(m: MapMarkerSpec): HTMLDivElement {
         ? `<div style="position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#ACFF2F;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;padding:0 4px;color:#111;">${m.badge}</div>`
         : ''
     }</div>`;
-  } else if (m.heading != null) {
-    // Directional "you are here" arrow — points true north at rotation 0;
-    // rotationAlignment:'map' on the Marker keeps it correctly oriented as
-    // the map itself rotates to track the device's heading.
-    el.innerHTML = `<div style="width:0;height:0;border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:22px solid ${m.color || '#ACFF2F'};filter:drop-shadow(0 1px 3px rgba(0,0,0,0.6));"></div>`;
   } else {
     el.innerHTML = `<div style="width:16px;height:16px;border-radius:8px;background:${m.color || '#ACFF2F'};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.6);"></div>`;
   }
@@ -66,17 +61,19 @@ export default function AppMapWeb({
   markers = [],
   route,
   routeColor,
+  showUserLocation = false,
+  trackUser,
   onMarkerPress,
   onMapPress,
-  onMarkerDragEnd,
   onUserPanStart,
 }: AppMapProps) {
   const containerRef = useRef<any>(null);
   const mapRef = useRef<any>(null);
   const resizeObserverRef = useRef<ResizeObserver | null>(null);
   const markersRef = useRef<Record<string, any>>({});
-  const callbacksRef = useRef({ onMarkerPress, onMapPress, onMarkerDragEnd, onUserPanStart });
-  callbacksRef.current = { onMarkerPress, onMapPress, onMarkerDragEnd, onUserPanStart };
+  const geolocateRef = useRef<any>(null);
+  const callbacksRef = useRef({ onMarkerPress, onMapPress, onUserPanStart });
+  callbacksRef.current = { onMarkerPress, onMapPress, onUserPanStart };
 
   useEffect(() => {
     let cancelled = false;
@@ -119,6 +116,24 @@ export default function AppMapWeb({
       map.on('dragstart', (e: any) => { if (e.originalEvent) callbacksRef.current.onUserPanStart?.(); });
       mapRef.current = map;
 
+      // Equivalente web del <UserLocation/> nativo. GeolocateControl ya
+      // dibuja el punto, el círculo de precisión y el cono de orientación, y
+      // mantiene la cámara siguiendo a la persona — replicarlo a mano con
+      // navigator.geolocation daría un resultado peor.
+      if (showUserLocation) {
+        const geolocate = new maplibregl.GeolocateControl({
+          positionOptions: { enableHighAccuracy: true },
+          trackUserLocation: Boolean(trackUser),
+          showUserHeading: trackUser === 'heading' || trackUser === 'course',
+          showAccuracyCircle: true,
+        });
+        map.addControl(geolocate);
+        geolocateRef.current = geolocate;
+        // El control solo empieza a ubicar cuando se lo toca; si la pantalla
+        // ya pidió seguimiento, se dispara solo apenas el mapa está listo.
+        if (trackUser) map.once('idle', () => geolocate.trigger());
+      }
+
       // MapLibre sizes its canvas once at construction time and never
       // re-measures on its own — without this, the canvas stays pinned to
       // whatever size the flex container happened to be at that instant,
@@ -143,10 +158,14 @@ export default function AppMapWeb({
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    // Igual que en nativo: mientras el control de geolocalización está
+    // siguiendo a la persona, mover la cámara desde acá le pelearía el
+    // control y el mapa se vería temblando.
+    if (trackUser) return;
     const opts = { center: [center.lng, center.lat], zoom, pitch, bearing };
     if (animate) map.easeTo({ ...opts, duration: 900 });
     else map.jumpTo(opts);
-  }, [center.lat, center.lng, zoom, pitch, bearing, animate]);
+  }, [center.lat, center.lng, zoom, pitch, bearing, animate, trackUser]);
 
   useEffect(() => {
     loadMaplibre().then((maplibregl) => {
@@ -158,7 +177,6 @@ export default function AppMapWeb({
         const existing = markersRef.current[m.id];
         if (existing) {
           existing.setLngLat([m.lng, m.lat]);
-          if (m.kind === 'dot' && m.heading != null) existing.setRotation(m.heading);
           return;
         }
         const el = makeEl(m);
@@ -166,22 +184,12 @@ export default function AppMapWeb({
           e.stopPropagation();
           callbacksRef.current.onMarkerPress?.(m.id);
         });
-        const hasHeading = m.kind === 'dot' && m.heading != null;
         const marker = new maplibregl.Marker({
           element: el,
-          draggable: m.kind === 'dot' && !!m.draggable,
           anchor: m.kind === 'photo' ? 'bottom' : 'center',
-          rotationAlignment: hasHeading ? 'map' : 'viewport',
         })
           .setLngLat([m.lng, m.lat])
           .addTo(map);
-        if (m.kind === 'dot' && m.heading != null) marker.setRotation(m.heading);
-        if (m.kind === 'dot' && m.draggable) {
-          marker.on('dragend', () => {
-            const pos = marker.getLngLat();
-            callbacksRef.current.onMarkerDragEnd?.(m.id, { lat: pos.lat, lng: pos.lng });
-          });
-        }
         markersRef.current[m.id] = marker;
       });
       Object.keys(markersRef.current).forEach((id) => {

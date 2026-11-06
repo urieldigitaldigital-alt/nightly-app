@@ -98,11 +98,17 @@ export type Message = {
   imagePath?: string | null;
   imageUrl?: string | null;
   createdAt: string;
-  // 'sending'/'error' only ever apply to the sender's own optimistic/queued
-  // copy of a message — rows that made it into the DB are always 'sent' or
-  // 'read' (derived client-side from the other member's last_read_at, see
-  // services/chat.ts).
-  status: 'sending' | 'sent' | 'read' | 'error';
+  // 'sending'/'error'/'rejected' only ever apply to the sender's own
+  // optimistic/queued copy of a message — rows that made it into the DB are
+  // always 'sent' or 'read' (derived client-side from the other member's
+  // last_read_at, see services/chat.ts).
+  //
+  // 'error' es temporal (sin conexión, servidor caído) y se reintenta solo.
+  // 'rejected' es definitivo: el filtro de contenido lo rechazó, reintentar
+  // daría el mismo resultado para siempre.
+  status: 'sending' | 'sent' | 'read' | 'error' | 'rejected';
+  /** Solo en 'rejected': por qué no se puede enviar, en texto para el usuario. */
+  rejectedReason?: string | null;
 };
 
 export type NotificationType =

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { ContentBlockedError, moderateFields } from '@/lib/moderation';
 import { Profile } from '@/types/models';
 
 function mapProfile(row: {
@@ -64,6 +65,12 @@ export async function updateMyProfile(input: UpdateProfileInput) {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) throw new Error('NOT_AUTHENTICATED');
+
+  // Guideline 1.2: el nombre visible y la bio son contenido público, así que
+  // pasan por el mismo filtro que cualquier otro texto de usuario. El trigger
+  // de `profiles` en la base vuelve a comprobarlo.
+  const check = moderateFields({ displayName: input.displayName, bio: input.bio, city: input.city });
+  if (!check.ok) throw new ContentBlockedError(check.message, check.field);
 
   const { error } = await supabase
     .from('profiles')

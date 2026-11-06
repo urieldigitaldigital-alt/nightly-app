@@ -12,10 +12,22 @@
       "distribution": "internal"
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "channel": "production",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "app-bundle"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "RELLENAR_CON_EL_APP_ID_DE_APP_STORE_CONNECT",
+        "appleTeamId": "RELLENAR_CON_EL_TEAM_ID"
+      }
+    }
   }
 }

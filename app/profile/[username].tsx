@@ -8,7 +8,8 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { LoadingState } from '@/components/ui/LoadingState';
-import { colors, spacing, typography } from '@/constants/theme';
+import { UserSafetySheet } from '@/components/safety/UserSafetySheet';
+import { colors, radii, spacing, typography } from '@/constants/theme';
 import { fetchProfileByIdOrUsername } from '@/services/profiles';
 import { countFollowers, countFollowing, followUser, isFollowing, unfollowUser } from '@/services/follows';
 import { useAuthStore } from '@/stores/authStore';
@@ -20,6 +21,7 @@ export default function PublicProfileScreen() {
   const myProfile = useAuthStore((s) => s.profile);
   const [following, setFollowing] = useState(false);
   const [followLoading, setFollowLoading] = useState(false);
+  const [safetyOpen, setSafetyOpen] = useState(false);
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['public-profile', username],
@@ -81,7 +83,13 @@ export default function PublicProfileScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </Pressable>
-        <View style={{ width: 24 }} />
+        {isMe ? (
+          <View style={{ width: 24 }} />
+        ) : (
+          <Pressable style={styles.moreButton} onPress={() => setSafetyOpen(true)} hitSlop={10} accessibilityLabel="Más opciones">
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.textPrimary} />
+          </Pressable>
+        )}
       </View>
 
       <View style={styles.profileHeader}>
@@ -141,12 +149,31 @@ export default function PublicProfileScreen() {
           )}
         />
       )}
+
+      <UserSafetySheet
+        visible={safetyOpen}
+        onClose={() => setSafetyOpen(false)}
+        userId={profile.id}
+        displayName={profile.displayName}
+        // Tras bloquear, este perfil deja de ser visible para quien bloqueó
+        // (migración 0019), así que quedarse acá mostraría datos que el
+        // backend ya no devolvería al recargar.
+        onBlocked={() => router.back()}
+      />
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.sm },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  moreButton: {
+    width: 32,
+    height: 32,
+    borderRadius: radii.pill,
+    backgroundColor: colors.surfaceAlt,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   profileHeader: { alignItems: 'center', gap: spacing.xxs, marginBottom: spacing.xl },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xxs, marginTop: spacing.sm },
   name: { color: colors.textPrimary, fontSize: typography.size.xl, fontWeight: typography.weight.bold },

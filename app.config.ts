@@ -34,6 +34,79 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     infoPlist: {
       NSLocationWhenInUseUsageDescription: LOCATION_PERMISSION_MESSAGE,
       NSPhotoLibraryUsageDescription: PHOTO_LIBRARY_PERMISSION_MESSAGE,
+      // La app no usa criptografía más allá de HTTPS, que está exenta.
+      // Declararlo acá evita que App Store Connect pida el cuestionario de
+      // export compliance en cada subida — y con él, una demora de horas por
+      // build mientras se procesa.
+      ITSAppUsesNonExemptEncryption: false,
+    },
+    // Privacy manifest (obligatorio desde mayo de 2024). App Store Connect
+    // rechaza el binario si una API de "razón requerida" se usa sin declarar
+    // para qué. Las cuatro categorías de abajo vienen de dependencias, no de
+    // código propio: AsyncStorage usa UserDefaults, expo-image-picker y
+    // expo-image leen marcas de tiempo y espacio en disco, y
+    // react-native-reanimated usa el tiempo de arranque del sistema.
+    privacyManifests: {
+      NSPrivacyAccessedAPITypes: [
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryUserDefaults',
+          NSPrivacyAccessedAPITypeReasons: ['CA92.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryFileTimestamp',
+          NSPrivacyAccessedAPITypeReasons: ['C617.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategoryDiskSpace',
+          NSPrivacyAccessedAPITypeReasons: ['E174.1'],
+        },
+        {
+          NSPrivacyAccessedAPIType: 'NSPrivacyAccessedAPICategorySystemBootTime',
+          NSPrivacyAccessedAPITypeReasons: ['35F9.1'],
+        },
+      ],
+      // Nada de esto se usa para publicidad ni para seguimiento entre apps:
+      // NSPrivacyTracking queda en false y no hay dominios de tracking.
+      NSPrivacyTracking: false,
+      NSPrivacyTrackingDomains: [],
+      NSPrivacyCollectedDataTypes: [
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeEmailAddress',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeName',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePreciseLocation',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypePhotosorVideos',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeOtherUserContent',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+        {
+          NSPrivacyCollectedDataType: 'NSPrivacyCollectedDataTypeUserID',
+          NSPrivacyCollectedDataTypeLinked: true,
+          NSPrivacyCollectedDataTypeTracking: false,
+          NSPrivacyCollectedDataTypePurposes: ['NSPrivacyCollectedDataTypePurposeAppFunctionality'],
+        },
+      ],
     },
   },
   android: {
@@ -46,7 +119,18 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
-    permissions: ['ACCESS_COARSE_LOCATION', 'ACCESS_FINE_LOCATION', 'READ_EXTERNAL_STORAGE'],
+    permissions: [
+      'ACCESS_COARSE_LOCATION',
+      'ACCESS_FINE_LOCATION',
+      // Android 13+ reemplazó READ_EXTERNAL_STORAGE por permisos por tipo de
+      // medio. Se declaran los dos para cubrir el rango de versiones que
+      // soporta la app.
+      'READ_EXTERNAL_STORAGE',
+      'READ_MEDIA_IMAGES',
+      // Android 13+ pide permiso explícito para notificaciones. Sin esto,
+      // expo-notifications no puede ni preguntar.
+      'POST_NOTIFICATIONS',
+    ],
   },
   web: {
     favicon: './assets/favicon.png',
@@ -61,6 +145,13 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     backgroundColor: '#080808',
   },
   plugins: [
+    './plugins/withTabletOrientations',
+    // Mapa nativo (MapLibre). Reemplazó al WebView que cargaba maplibre-gl
+    // desde unpkg: ese dependía de un CDN externo en tiempo de ejecución, así
+    // que con mala conexión — o con un revisor de Apple detrás de un
+    // firewall — el mapa quedaba en negro, que es un rechazo por Guideline
+    // 2.1 esperando a pasar.
+    '@maplibre/maplibre-react-native',
     '@react-native-community/datetimepicker',
     'expo-web-browser',
     'expo-router',

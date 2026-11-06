@@ -1,55 +1,137 @@
 # Pendientes manuales — cosas que solo podés hacer vos
 
-Nada de esto lo puede hacer el código por sí solo (credenciales, cuentas de terceros, configuración de dashboards). Se completa a medida que cada fase lo necesita.
+Nada de esto lo puede hacer el código por sí solo: son credenciales, cuentas de terceros y configuración de dashboards.
 
-## Fase 0
-
-- [ ] **Proyecto EAS**: correr `eas login` y `eas init` (o confirmarme el `EXPO_PUBLIC_EAS_PROJECT_ID` si ya existe un proyecto EAS creado) para que `eas build` tenga dónde compilar.
-
-## Fase 1 — Sign in with Apple
-
-- [ ] En **developer.apple.com** → Certificates, Identifiers & Profiles → Identifiers → tu App ID (`com.afterdune.app`): habilitar la capability **"Sign In with Apple"**.
-- [ ] Crear un **Services ID** nuevo (distinto del bundle ID de la app) para usar como client ID de Apple en Supabase.
-- [ ] Crear una **Key** (Keys → "+") con "Sign In with Apple" habilitado, descargar el archivo `.p8` (solo se puede descargar una vez).
-- [ ] En el dashboard de **Supabase** → Authentication → Providers → Apple: pegar el Services ID, Team ID, Key ID y el contenido del archivo `.p8`.
-- [ ] Guardar el archivo `.p8` en un lugar seguro (no se commitea a git) — hace falta también para revocar tokens al eliminar una cuenta.
-
-## Fase 1 — Legales
-
-- [x] Ya enlazadas desde la app (Configuración > Legal) apuntando a `nightly-app-seven.vercel.app/terms.html` y `/privacy.html` (se sirven solas desde el mismo despliegue de Vercel, sin configuración extra). Si preferís otro dominio, avisame y actualizo `constants/brand.ts`.
-- [ ] Pegar esas mismas URLs en App Store Connect (campo "Privacy Policy URL") cuando crees el registro de la app.
-
-## Fase 1 — Revocación de token de Apple al eliminar cuenta
-
-- [ ] **No implementado todavía, a propósito.** Revocar el acceso en el lado de Apple cuando alguien elimina su cuenta requiere: el archivo `.p8` de la Key de Apple (el mismo de la sección anterior), el Team ID y el Key ID, para firmar un JWT y llamar al endpoint de revocación de Apple desde `supabase/functions/delete-account/index.ts`. Eliminar la cuenta en Supabase ya funciona igual sin esto (el usuario pierde el acceso a la app), solo falta notificarle a Apple que el permiso fue revocado. Decime cuando tengas las credenciales de la sección anterior y lo agrego — es un cambio chico una vez que exista el `.p8`.
-
-## Migraciones de base de datos pendientes
-
-No tengo una conexión directa a tu base de datos desde acá — cada migración nueva la tenés que correr vos en el **SQL Editor del dashboard de Supabase** (Database → SQL Editor → pegar el contenido del archivo → Run), en este orden:
-
-- [ ] `supabase/migrations/0019_hide_blocked_from_discovery.sql` — bloquear a alguien oculta su perfil/eventos.
-- [ ] `supabase/migrations/0020_expire_finished_events.sql` — las fiestas se marcan "finalizadas" automáticamente apenas pasa su hora de fin (o 6 horas después de empezar si no pusiste hora de fin), y dejan de aparecer en el mapa/feed en ese momento. Corre cada 10 minutos.
-- [ ] `supabase/migrations/0021_live_locations.sql` — tabla + permisos para que un invitado aceptado pueda compartir su ubicación en vivo con el organizador mientras navega hacia la fiesta (opt-in, se pregunta antes de cada navegación).
-- [ ] `supabase/migrations/0022_chat_images.sql` — permite que un mensaje de chat lleve una foto (columna nueva + bucket privado `chat-images` con sus permisos).
-
-## Plantillas de email (Authentication → Emails → Templates en Supabase)
-
-- [x] "Confirm sign up" actualizada para decir Afterdune (ya tenía diseño propio con los colores de la marca, no era la plantilla genérica de Supabase).
-- [ ] Revisar las demás (Reset password, Magic link/OTP, Invite user, Change email, Reauthentication) por si también dicen "NIGHTLY" — quedó pendiente por un corte de conexión con la extensión de Chrome a mitad de la revisión.
-- [ ] Configurar el remitente de los emails de Supabase Auth (Authentication → Emails → SMTP Settings) con un dominio propio y sus registros SPF/DKIM, para que no caigan en spam. Si no tenés un proveedor de email transaccional (Resend, Postmark, etc.) todavía, decime y te recomiendo uno gratis para este volumen.
-
-## Fase 4 — Verificación de email con código de 6 dígitos
-
-- [ ] **Activar la confirmación de email obligatoria**: Authentication → Settings → "Confirm email" (tiene que estar en ON). Hoy está apagado, así que `signUp()` devuelve sesión directa y la pantalla nueva `verify-email.tsx` nunca se usa en producción hasta que actives esto.
-- [ ] **Actualizar la plantilla "Confirm sign up"**: hoy el email solo muestra un botón "Confirmar mi cuenta" (el link), pero la pantalla nueva le pide al usuario que escriba el código de 6 dígitos. Agregar `{{ .Token }}` bien visible en el cuerpo del email (grande, con buen contraste) además del botón existente — dejar el link también sirve como alternativa si el código no llega bien.
-
-## Fase 6 — Cuenta demo y envío
-
-- [ ] Te voy a dejar acá mismo las credenciales de una cuenta demo (usuario + contraseña) con una previa de ejemplo y un chat de ejemplo, para que las copies en el campo "Notas para el revisor" de App Store Connect.
-- [ ] Crear el registro de la app en **App Store Connect** (nombre Afterdune, bundle ID `com.afterdune.app`, categoría, clasificación de edad — recomendación en `CHECKLIST_APP_STORE.md`).
-- [ ] Completar el cuestionario de **App Privacy** en App Store Connect (te dejo el borrador de respuestas en `CHECKLIST_APP_STORE.md`).
-- [ ] Pegar la URL de la Política de Privacidad en App Store Connect.
-- [ ] Correr `eas submit` (o subirlo manualmente desde Xcode/Transporter) cuando el build esté listo — este paso final de envío lo hacés vos, yo dejo todo preparado para que sea un solo comando.
+Ordenado por lo que bloquea el envío primero.
 
 ---
-*Última actualización: Fase 5 completa.*
+
+## 🔴 Bloqueante — compilar el binario
+
+El código está listo, pero **el build nativo todavía no se compiló ni una vez**, y hasta que eso pase no hay binario para enviar.
+
+En esta Mac no se pudo compilar localmente: CocoaPods necesita Ruby ≥ 3.3 y el Ruby del sistema es 2.6, cuyos headers Apple ya quitó de Xcode 27. Dos caminos:
+
+**Opción A — build en la nube con EAS (recomendado, no toca tu Mac)**
+
+```bash
+npx eas login
+```
+```bash
+npx eas build --platform ios --profile production
+```
+
+EAS compila en sus servidores, donde el toolchain ya está armado. Es también el camino para el que `eas.json` ya está configurado.
+
+**Opción B — compilar local (si querés poder probar en el simulador)**
+
+Instalar un Ruby moderno con Homebrew y después CocoaPods:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+```bash
+brew install ruby cocoapods && npx expo run:ios
+```
+
+> Avisame cuando tengas una de las dos andando y seguimos desde ahí: si el build tira algún error de compilación del módulo nativo del mapa, lo arreglo.
+
+---
+
+## 🔴 Bloqueante — migraciones de base de datos
+
+En el SQL Editor de Supabase (Database → SQL Editor), pegar y ejecutar **en este orden**:
+
+- [ ] `supabase/migrations/0019_hide_blocked_from_discovery.sql`
+- [ ] `supabase/migrations/0020_expire_finished_events.sql`
+- [ ] `supabase/migrations/0021_live_locations.sql`
+- [ ] `supabase/migrations/0022_chat_images.sql`
+- [ ] `supabase/migrations/0023_content_moderation.sql` ← **el filtro de contenido. Sin esto, Apple puede rechazar por Guideline 1.2.**
+- [ ] `supabase/migrations/0024_apple_credentials.sql` ← necesario para revocar el token de Apple.
+- [ ] `supabase/migrations/0025_username_login.sql` ← aviso de "usuario ya en uso" y login con nombre de usuario.
+
+---
+
+## 🔴 Bloqueante — Edge Functions
+
+```bash
+npx supabase functions deploy delete-account
+```
+```bash
+npx supabase functions deploy apple-link
+```
+```bash
+npx supabase functions deploy login
+```
+
+> `login` es la que permite entrar con nombre de usuario. Sin desplegarla, el login con email sigue funcionando igual, pero el de usuario devuelve error.
+
+---
+
+## 🟡 Sign in with Apple (código listo, faltan las credenciales)
+
+Apple exige revocar el permiso cuando alguien borra su cuenta. El código ya lo hace; necesita cuatro datos.
+
+1. [ ] En **developer.apple.com** → Identifiers → tu App ID (`com.afterdune.app`): habilitar **"Sign In with Apple"**.
+2. [ ] Crear un **Services ID** nuevo (distinto del bundle ID), para usar como client ID en Supabase.
+3. [ ] Crear una **Key** (Keys → "+") con "Sign In with Apple" habilitado y descargar el `.p8`. **Solo se puede descargar una vez.**
+4. [ ] En **Supabase** → Authentication → Providers → Apple: pegar Services ID, Team ID, Key ID y el contenido del `.p8`.
+5. [ ] En **Supabase** → Edge Functions → Secrets, cargar:
+   - `APPLE_TEAM_ID`
+   - `APPLE_KEY_ID`
+   - `APPLE_CLIENT_ID` (el bundle ID `com.afterdune.app` para el login nativo de iOS)
+   - `APPLE_PRIVATE_KEY` (el contenido completo del `.p8`, con las líneas `-----BEGIN/END PRIVATE KEY-----`)
+
+> Sin estos secrets la app funciona igual y la cuenta se borra igual: lo único que no pasa es la notificación de revocación a Apple. El código degrada solo y deja el aviso en el log, nunca falla el borrado.
+
+---
+
+## 🟡 Configuración de Supabase Auth
+
+- [ ] **Activar "Confirm email"** (Authentication → Settings). Hoy está apagado, así que la pantalla de código de 6 dígitos nunca se usa en producción.
+- [ ] **Actualizar la plantilla "Confirm sign up"**: agregar `{{ .Token }}` bien visible (grande, buen contraste) además del botón, porque la app pide el código de 6 dígitos.
+- [ ] Revisar las otras plantillas (Reset password, Magic link, Invite, Change email) por si todavía dicen "NIGHTLY".
+- [ ] Configurar SMTP propio con SPF/DKIM para que los mails no caigan en spam.
+
+---
+
+## 🟡 Cuenta demo para el revisor
+
+```bash
+SUPABASE_SERVICE_ROLE_KEY=eyJ... node scripts/seed-reviewer-demo.mjs
+```
+
+La service role key está en Supabase → Project Settings → API. El script crea dos cuentas, publica una fiesta, deja una solicitud pendiente y una conversación con mensajes, y al final imprime el usuario y la contraseña para pegar en App Store Connect.
+
+Es idempotente: se puede correr de nuevo antes de cada envío.
+
+---
+
+## 🟡 Dominio de los legales
+
+Hoy apuntan a `nightly-app-seven.vercel.app`, que todavía dice "nightly" aunque la app se llame Afterdune.
+
+- [ ] Decidir si se queda así o se migra a `afterdune.app`.
+- [ ] Si se migra: cambiar `webUrl`, `termsUrl` y `privacyUrl` en `constants/brand.ts`, redesplegar, y recién ahí pegar las URLs en App Store Connect.
+
+---
+
+## 🟢 App Store Connect
+
+Todo el texto a pegar está en `APP_STORE_CONNECT.md`.
+
+- [ ] Crear el registro de la app (nombre, bundle ID, categorías).
+- [ ] Clasificación de edad → tiene que dar **17+** (respuestas en la sección 2).
+- [ ] Cuestionario de App Privacy (respuestas en la sección 6).
+- [ ] Pegar las notas del revisor con las credenciales demo (sección 3).
+- [ ] Capturas de pantalla: hacen falta de iPhone 6.9" y 6.5", y de iPad 13" (porque `supportsTablet` está en true).
+- [ ] Enviar a revisión.
+
+---
+
+## 🟢 EAS
+
+- [ ] Completar `ascAppId` y `appleTeamId` en `eas.json` → `submit.production.ios` (hoy tienen un texto de relleno). El `ascAppId` sale de la URL de la app en App Store Connect.
+
+---
+*Última actualización: pasada completa de preparación para la App Store.*

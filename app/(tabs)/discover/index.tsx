@@ -14,6 +14,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useLocationStore } from '@/stores/locationStore';
 import { useCategories } from '@/hooks/useCategories';
 import { useEventsFeed } from '@/hooks/useEventsFeed';
+import { useResponsive } from '@/hooks/useResponsive';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 export default function DiscoverScreen() {
@@ -25,6 +26,7 @@ export default function DiscoverScreen() {
   const [locationSheetOpen, setLocationSheetOpen] = useState(false);
 
   const { categories } = useCategories();
+  const { columns, gutter } = useResponsive();
 
   const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm, categorySlug });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
@@ -43,7 +45,7 @@ export default function DiscoverScreen() {
 
   return (
     <Screen edges={['top']}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingHorizontal: gutter }]}>
         <View style={styles.headerTop}>
           <View>
             <Text style={styles.greeting}>Hola{profile ? `, ${profile.displayName.split(' ')[0]}` : ''} 👋</Text>
@@ -105,7 +107,13 @@ export default function DiscoverScreen() {
         <FlatList
           data={events}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.feedList}
+          // FlatList no reconstruye su layout interno si numColumns cambia en
+          // caliente; cambiar la key la fuerza a remontar. Pasa de verdad al
+          // rotar un iPad o al redimensionar la ventana del navegador.
+          key={`feed-${columns}`}
+          numColumns={columns}
+          columnWrapperStyle={columns > 1 ? { gap: spacing.md } : undefined}
+          contentContainerStyle={[styles.feedList, { paddingHorizontal: gutter }]}
           refreshControl={
             <RefreshControl
               tintColor={colors.accent}
@@ -119,7 +127,13 @@ export default function DiscoverScreen() {
           onEndReached={() => {
             if (feed.hasNextPage && !feed.isFetchingNextPage) feed.fetchNextPage();
           }}
-          renderItem={({ item, index }) => <EventCard event={item} index={index} onPress={() => router.push(`/event/${item.id}`)} />}
+          renderItem={({ item, index }) => (
+            // En grilla, cada celda tiene que declarar su propio ancho
+            // flexible o la tarjeta se expande y rompe las columnas.
+            <View style={columns > 1 ? styles.gridCell : undefined}>
+              <EventCard event={item} index={index} onPress={() => router.push(`/event/${item.id}`)} />
+            </View>
+          )}
           ItemSeparatorComponent={() => <View style={{ height: spacing.md }} />}
           ListFooterComponent={feed.isFetchingNextPage ? <LoadingState /> : undefined}
         />
@@ -132,7 +146,6 @@ export default function DiscoverScreen() {
 
 const styles = StyleSheet.create({
   header: {
-    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     gap: spacing.sm,
   },
@@ -158,5 +171,6 @@ const styles = StyleSheet.create({
   },
   searchPlaceholder: { color: colors.textMuted, fontSize: typography.size.md },
   categoryList: { gap: spacing.xs, paddingVertical: spacing.xxs },
-  feedList: { paddingHorizontal: spacing.lg, paddingBottom: spacing.xxxl, paddingTop: spacing.xs },
+  feedList: { paddingBottom: spacing.xxxl, paddingTop: spacing.xs },
+  gridCell: { flex: 1 },
 });

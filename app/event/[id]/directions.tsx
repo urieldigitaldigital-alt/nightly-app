@@ -13,7 +13,6 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { haversineMeters, projectOntoPolyline } from '@/lib/geo';
 import { useEventDetail } from '@/hooks/useEventDetail';
-import { useAuthStore } from '@/stores/authStore';
 import { useLocationStore } from '@/stores/locationStore';
 import { fetchDrivingDirections, DirectionsResult, RouteStep, TravelMode } from '@/services/directions';
 import { decodePolyline } from '@/lib/polyline';
@@ -68,7 +67,6 @@ export default function DirectionsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { data: event, isLoading } = useEventDetail(id);
-  const myProfile = useAuthStore((s) => s.profile);
   const fallbackOrigin = useLocationStore((s) => s.origin);
   const [userCoords, setUserCoords] = useState<LatLng | null>(null);
   const [directions, setDirections] = useState<DirectionsResult | null>(null);
@@ -363,12 +361,11 @@ export default function DirectionsScreen() {
       : fullRouteCoords;
 
   const view = viewState ?? { center: userCoords, zoom: FOLLOW_ZOOM, pitch: FOLLOW_PITCH, bearing: lastBearingRef.current };
-  // Real photos instead of plain colored dots — your own profile photo for
-  // "me", the event's cover photo for the destination. The camera itself
-  // already rotates to follow heading during navigation (course-up), so a
-  // separately-rotating arrow glyph on the marker would just be redundant.
+  // Solo el destino. La posición propia la dibuja el mapa nativo con
+  // <UserLocation/>: se mueve en el hilo nativo entre fix y fix, así que no
+  // salta de GPS en GPS como saltaba un marcador movido desde JavaScript, y
+  // muestra el círculo de precisión real.
   const mapMarkers: MapMarkerSpec[] = [
-    { id: 'me', kind: 'photo', lat: userCoords.lat, lng: userCoords.lng, photoUrl: myProfile?.avatarUrl },
     { id: 'dest', kind: 'photo', lat: event.exactLat!, lng: event.exactLng!, photoUrl: event.coverImageUrl },
   ];
 
@@ -386,6 +383,12 @@ export default function DirectionsScreen() {
           markers={mapMarkers}
           route={routeCoords}
           routeColor={colors.accent}
+          showUserLocation
+          // 'course' durante la navegación: el mapa se orienta según hacia
+          // dónde te estás moviendo de verdad, que es lo que hace un GPS de
+          // auto. 'heading' en la previa: ahí todavía no te moviste, así que
+          // lo útil es la brújula del teléfono.
+          trackUser={isFollowing ? (navState === 'navigating' ? 'course' : 'heading') : undefined}
           onUserPanStart={() => setIsFollowing(false)}
         />
 

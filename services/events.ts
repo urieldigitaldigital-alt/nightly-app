@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { ContentBlockedError, moderateFields } from '@/lib/moderation';
 import { mapRadiusRowToSummary } from '@/lib/mappers';
 import { EventDetail, EventSummary, VenueType } from '@/types/models';
 
@@ -136,7 +137,20 @@ export type CreateEventInput = {
   organizerConfirmedAuthorization: boolean;
 };
 
+/**
+ * Todo el texto libre de una fiesta que termina siendo visible para otra
+ * gente. La dirección exacta queda afuera a propósito: es un dato privado que
+ * solo ven los invitados aceptados, y un nombre de calle real puede coincidir
+ * con un término de la lista sin que eso signifique nada.
+ */
+function moderateEventText(input: { title?: string; description?: string; rules?: string | null }) {
+  const check = moderateFields({ title: input.title, description: input.description, rules: input.rules });
+  if (!check.ok) throw new ContentBlockedError(check.message, check.field);
+}
+
 export async function createEvent(input: CreateEventInput) {
+  moderateEventText(input);
+
   const { data, error } = await supabase.rpc('create_event_with_location', {
     p_category_slug: input.categorySlug,
     p_title: input.title,
@@ -162,6 +176,31 @@ export async function createEvent(input: CreateEventInput) {
 
   if (error) throw error;
   return data;
+}
+
+export type UpdateEventInput = {
+  title: string;
+  description: string;
+  rules: string | null;
+  capacity: number | null;
+  startsAt: string;
+};
+
+export async function updateEvent(eventId: string, input: UpdateEventInput) {
+  moderateEventText(input);
+
+  const { error } = await supabase
+    .from('events')
+    .update({
+      title: input.title,
+      description: input.description,
+      rules: input.rules,
+      capacity: input.capacity,
+      starts_at: input.startsAt,
+    })
+    .eq('id', eventId);
+
+  if (error) throw error;
 }
 
 export async function cancelEvent(eventId: string) {

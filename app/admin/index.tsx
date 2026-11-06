@@ -9,7 +9,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';
-import { fetchPendingReports, runAdminAction } from '@/services/admin';
+import { fetchPendingReports, hoursWaiting, MODERATION_SLA_HOURS, runAdminAction } from '@/services/admin';
 import { formatRelativeShort } from '@/lib/format';
 
 export default function AdminScreen() {
@@ -50,23 +50,38 @@ export default function AdminScreen() {
       ) : (
         <FlatList
           data={data}
-          keyExtractor={(r: any) => r.id}
+          keyExtractor={(r) => r.id}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
-          renderItem={({ item }: any) => (
-            <View style={styles.card}>
+          renderItem={({ item }) => {
+            const overdue = hoursWaiting(item.created_at) > MODERATION_SLA_HOURS;
+            return (
+            <View style={[styles.card, overdue && styles.cardOverdue]}>
               <View style={styles.cardTop}>
-                <Badge label={item.target_type} tone="neutral" />
-                <Text style={styles.time}>{formatRelativeShort(item.created_at)}</Text>
+                <View style={styles.badges}>
+                  <Badge label={item.target_type} tone="neutral" />
+                  {item.source === 'automatic' && <Badge label="filtro" tone="warning" />}
+                </View>
+                {/* El compromiso público es responder dentro de las 24 horas;
+                    si una denuncia lo pasó tiene que verse de lejos. */}
+                <Text style={[styles.time, overdue && styles.timeOverdue]}>
+                  {overdue ? '⚠ ' : ''}
+                  {formatRelativeShort(item.created_at)}
+                </Text>
               </View>
               <Text style={styles.reason}>{item.reason}</Text>
               {item.details ? <Text style={styles.details}>{item.details}</Text> : null}
-              <Text style={styles.reporter}>Denunciado por @{item.reporter?.username}</Text>
+              <Text style={styles.reporter}>
+                {item.source === 'automatic'
+                  ? 'Detectado por el filtro de contenido'
+                  : `Denunciado por @${item.reporter?.username ?? 'cuenta eliminada'}`}
+              </Text>
               <View style={styles.actions}>
                 <Button label="Descartar" variant="outline" fullWidth={false} onPress={() => resolve(item.id, 'dismissed')} />
                 <Button label="Tomar acción" variant="danger" fullWidth={false} onPress={() => resolve(item.id, 'actioned')} />
               </View>
             </View>
-          )}
+            );
+          }}
         />
       )}
     </Screen>
@@ -78,8 +93,11 @@ const styles = StyleSheet.create({
   title: { color: colors.textPrimary, fontSize: typography.size.lg, fontWeight: typography.weight.bold },
   sectionTitle: { color: colors.textSecondary, fontSize: typography.size.sm, fontWeight: typography.weight.semibold, marginBottom: spacing.sm },
   card: { backgroundColor: colors.surface, borderRadius: radii.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: 4 },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between' },
+  cardOverdue: { borderColor: colors.danger },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badges: { flexDirection: 'row', gap: spacing.xxs },
   time: { color: colors.textMuted, fontSize: typography.size.xs },
+  timeOverdue: { color: colors.danger, fontWeight: typography.weight.semibold },
   reason: { color: colors.textPrimary, fontSize: typography.size.md, fontWeight: typography.weight.semibold, marginTop: 4 },
   details: { color: colors.textSecondary, fontSize: typography.size.sm },
   reporter: { color: colors.textMuted, fontSize: typography.size.xs, marginTop: 4 },

@@ -13,6 +13,7 @@ import { LoadingState } from '@/components/ui/LoadingState';
 import { BottomSheetModal } from '@/components/ui/BottomSheetModal';
 import { ImageViewerModal } from '@/components/ui/ImageViewerModal';
 import { MessageBubble } from '@/components/chat/MessageBubble';
+import { SafetyOption, UserSafetySheet } from '@/components/safety/UserSafetySheet';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import {
   broadcastTyping,
@@ -24,7 +25,6 @@ import {
   subscribeToConversationMembers,
   leaveConversation,
 } from '@/services/chat';
-import { blockUser, fileReport } from '@/services/reports';
 import { ensurePhotoLibraryAccess } from '@/lib/permissions';
 import { useAuthStore } from '@/stores/authStore';
 import { useChatOutboxStore } from '@/stores/chatOutboxStore';
@@ -44,6 +44,7 @@ export default function ChatThreadScreen() {
   const [otherReadAt, setOtherReadAt] = useState<string | null>(null);
   const [otherTyping, setOtherTyping] = useState(false);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [reportingMessageId, setReportingMessageId] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,6 +53,7 @@ export default function ChatThreadScreen() {
   const outboxMessages = useChatOutboxStore((s) => s.messages.filter((m) => m.conversationId === id));
   const enqueueOutbox = useChatOutboxStore((s) => s.enqueue);
   const retryOutbox = useChatOutboxStore((s) => s.retry);
+  const discardOutbox = useChatOutboxStore((s) => s.discard);
 
   const { data: meta } = useQuery({ queryKey: ['conversation-meta', id], queryFn: () => fetchConversationMeta(id), enabled: Boolean(id) });
   const { data: initialMessages, isLoading } = useQuery({ queryKey: ['messages', id], queryFn: () => fetchMessages(id), enabled: Boolean(id) });
@@ -75,6 +77,7 @@ export default function ChatThreadScreen() {
       imageUrl: m.imageLocalUri,
       createdAt: m.createdAt,
       status: m.status,
+      rejectedReason: m.rejectedReason ?? null,
     }));
     return [...messages, ...queued].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
   }, [messages, outboxMessages]);
@@ -214,6 +217,17 @@ export default function ChatThreadScreen() {
                   isMine={isMine}
                   onImagePress={setViewerUri}
                   onRetry={() => retryOutbox(item.id)}
+                  onDiscard={() => discardOutbox(item.id)}
+                  // Denunciar el mensaje puntual y no solo a la persona:
+                  // moderación necesita saber qué se dijo, no únicamente
+                  // quién lo dijo. Solo sobre mensajes ajenos ya confirmados
+                  // — uno propio o uno que todavía está en la cola de envío
+                  // no tiene nada que denunciar.
+                  onLongPress={
+                    isMine || item.status === 'sending' || item.status === 'error' || item.status === 'rejected'
+                      ? undefined
+                      : () => setReportingMessageId(item.id)
+                  }
                 />
               );
             }}
@@ -244,51 +258,63 @@ export default function ChatThreadScreen() {
 
       <ImageViewerModal visible={Boolean(viewerUri)} uri={viewerUri} onClose={() => setViewerUri(null)} />
 
-      <BottomSheetModal visible={optionsOpen} onClose={() => setOptionsOpen(false)}>
-        {!meta?.isGroup && meta?.otherMember && (
-          <>
-            <OptionRow icon="person-outline" label="Ver perfil" onPress={() => router.push(`/profile/${meta.otherMember!.id}`)} />
-            <OptionRow
-              icon="flag-outline"
-              label="Reportar"
-              onPress={async () => {
-                await fileReport('profile', meta.otherMember!.id, 'reported_from_chat');
-                setOptionsOpen(false);
-              }}
-            />
-            <OptionRow
-              icon="ban-outline"
-              label="Bloquear"
-              danger
-              onPress={async () => {
-                await blockUser(meta.otherMember!.id);
-                setOptionsOpen(false);
-                router.back();
-              }}
-            />
-          </>
-        )}
-        <OptionRow
-          icon="exit-outline"
-          label="Salir de la conversación"
-          danger
-          onPress={async () => {
-            await leaveConversation(id);
-            setOptionsOpen(false);
-            router.back();
+      <BottomSheetModal visible={Boolean(reportingMessageId)} onClose={() => setReportingMessageId(null)}>
+        <SafetyOption
+          icon="flag-outline"
+          label="Denunciar este mensaje"
+          onPress={() => {
+            const messageId = reportingMessageId;
+            setReportingMessageId(null);
+            router.push({ pathname: '/report', params: { targetType: 'message', targetId: messageId! } });
           }}
         />
       </BottomSheetModal>
-    </Screen>
-  );
-}
 
-function OptionRow({ icon, label, onPress, danger }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; danger?: boolean }) {
-  return (
-    <Pressable style={styles.optionRow} onPress={onPress}>
-      <Ionicons name={icon} size={20} color={danger ? colors.danger : colors.textPrimary} />
-      <Text style={[styles.optionLabel, danger && { color: colors.danger }]}>{label}</Text>
-    </Pressable>
+      {/* El chat 1:1 usa la hoja compartida de seguridad (denunciar/bloquear
+          con confirmación); el grupal no tiene una contraparte única a quien
+          bloquear, así que ahí solo queda salir de la conversación. */}
+      {!meta?.isGroup && meta?.otherMember ? (
+        <UserSafetySheet
+          visible={optionsOpen}
+          onClose={() => setOptionsOpen(false)}
+          userId={meta.otherMember.id}
+          displayName={meta.otherMember.displayName}
+          onBlocked={() => router.back()}
+        >
+          <SafetyOption
+            icon="person-outline"
+            label="Ver perfil"
+            onPress={() => {
+              setOptionsOpen(false);
+              router.push(`/profile/${meta.otherMember!.id}`);
+            }}
+          />
+          <SafetyOption
+            icon="exit-outline"
+            label="Salir de la conversación"
+            danger
+            onPress={async () => {
+              await leaveConversation(id);
+              setOptionsOpen(false);
+              router.back();
+            }}
+          />
+        </UserSafetySheet>
+      ) : (
+        <BottomSheetModal visible={optionsOpen} onClose={() => setOptionsOpen(false)}>
+          <SafetyOption
+            icon="exit-outline"
+            label="Salir de la conversación"
+            danger
+            onPress={async () => {
+              await leaveConversation(id);
+              setOptionsOpen(false);
+              router.back();
+            }}
+          />
+        </BottomSheetModal>
+      )}
+    </Screen>
   );
 }
 

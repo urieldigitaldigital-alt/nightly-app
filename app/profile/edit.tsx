@@ -12,6 +12,7 @@ import { colors, spacing, typography } from '@/constants/theme';
 import { LAUNCH_CITIES } from '@/constants/cities';
 import { MUSIC_GENRES } from '@/constants/musicGenres';
 import { useAuthStore } from '@/stores/authStore';
+import { userFacingError } from '@/lib/errors';
 import { updateMyProfile } from '@/services/profiles';
 import { uploadAvatar } from '@/services/storage';
 import { ensurePhotoLibraryAccess } from '@/lib/permissions';
@@ -28,6 +29,7 @@ export default function EditProfileScreen() {
   const [interests, setInterests] = useState<string[]>(profile?.musicInterests ?? []);
   const [localPhotoUri, setLocalPhotoUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleGenre = (genre: string) => {
     setInterests((prev) => (prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]));
@@ -41,12 +43,18 @@ export default function EditProfileScreen() {
 
   const handleSave = async () => {
     setLoading(true);
+    setError(null);
     try {
       let avatarUrl: string | undefined;
       if (localPhotoUri && session) avatarUrl = await uploadAvatar(session.user.id, localPhotoUri);
       await updateMyProfile({ displayName, bio, city, musicInterests: interests, avatarUrl });
       await refreshProfile();
       router.back();
+    } catch (e: unknown) {
+      // Antes el fallo era silencioso: el spinner paraba y la pantalla se
+      // quedaba igual, sin decir nada. Con el filtro de contenido eso pasó a
+      // ser un caso esperable, no una rareza.
+      setError(userFacingError(e, 'No pudimos guardar tu perfil. Probá de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -88,6 +96,8 @@ export default function EditProfileScreen() {
             ))}
           </View>
 
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+
           <Button label="Guardar cambios" onPress={handleSave} loading={loading} />
 
           <Pressable style={styles.deleteRow} onPress={() => router.push('/settings/delete-account')}>
@@ -117,6 +127,7 @@ const styles = StyleSheet.create({
     borderColor: colors.background,
   },
   form: { gap: spacing.md, paddingBottom: spacing.xxl },
+  error: { color: colors.danger, fontSize: typography.size.sm, lineHeight: 19 },
   label: { color: colors.textSecondary, fontSize: typography.size.sm, fontWeight: typography.weight.medium },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs },
   deleteRow: { alignItems: 'center', marginTop: spacing.lg },

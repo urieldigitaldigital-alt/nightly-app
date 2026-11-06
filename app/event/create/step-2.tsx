@@ -35,7 +35,7 @@ export default function CreateEventStep2() {
   const pinLat = draft.exactLat ?? defaultCity.lat;
   const pinLng = draft.exactLng ?? defaultCity.lng;
   const pinMarkers = useMemo<MapMarkerSpec[]>(
-    () => [{ id: 'pin', kind: 'dot', lat: pinLat, lng: pinLng, color: colors.accent, draggable: true }],
+    () => [{ id: 'pin', kind: 'dot', lat: pinLat, lng: pinLng, color: colors.accent }],
     [pinLat, pinLng]
   );
 
@@ -130,10 +130,9 @@ export default function CreateEventStep2() {
                 pitch={0}
                 markers={pinMarkers}
                 onMapPress={(coord) => update({ exactLat: coord.lat, exactLng: coord.lng })}
-                onMarkerDragEnd={(_id, coord) => update({ exactLat: coord.lat, exactLng: coord.lng })}
               />
             </View>
-            <Text style={styles.hint}>Tocá el mapa o arrastrá el marcador para ajustar la ubicación.</Text>
+            <Text style={styles.hint}>Tocá el mapa para mover el punto a la ubicación exacta.</Text>
           </View>
 
           {error ? <Text style={styles.error}>{error}</Text> : null}
