@@ -63,7 +63,23 @@ El filtro de contenido quedó probado contra la base real:
 
 ---
 
-## 🔴 Bloqueante — Edge Functions
+## Edge Functions — una desplegada, dos esperando a Apple
+
+- [x] **`login`** — desplegada desde el editor del dashboard y probada contra
+      producción (usuario inexistente → 401, falta contraseña → 400). El ingreso
+      con nombre de usuario ya funciona.
+- [ ] **`apple-link`** y **`delete-account`** — no tiene sentido desplegarlas
+      todavía: las dos dependen de los secrets de Apple y sin ellos no hacen nada
+      (degradan con un aviso en el log). Además importan `../_shared/apple.ts`,
+      que el editor del dashboard no puede resolver porque vive fuera de la
+      carpeta de la función. Se despliegan con el CLI junto con los secrets:
+
+      npx supabase login && npx supabase functions deploy apple-link delete-account
+
+      La versión de `delete-account` que está en producción hoy borra cuentas
+      correctamente; lo único que le falta es avisarle a Apple.
+
+### Referencia: desplegar desde el dashboard
 
 ```bash
 npx supabase functions deploy delete-account
