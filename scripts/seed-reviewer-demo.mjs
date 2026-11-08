@@ -23,6 +23,7 @@
  */
 
 import { readFileSync, existsSync } from 'node:fs';
+import zlib from 'node:zlib';
 import { createClient } from '@supabase/supabase-js';
 
 // ---------------------------------------------------------------------------
@@ -51,17 +52,26 @@ if (!SUPABASE_URL || !ANON_KEY) {
   console.error('Faltan EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY (revisá tu .env).');
   process.exit(1);
 }
-if (!SERVICE_ROLE_KEY) {
-  console.error('Falta SUPABASE_SERVICE_ROLE_KEY.\n');
-  console.error('Está en el dashboard de Supabase → Project Settings → API → service_role.');
-  console.error('Pasala solo para esta corrida:\n');
-  console.error('  SUPABASE_SERVICE_ROLE_KEY=eyJ... node scripts/seed-reviewer-demo.mjs\n');
-  process.exit(1);
+/**
+ * Sin la service role key el script sigue andando, pero no puede crear las
+ * cuentas ni tocar sus perfiles: solo carga el contenido iniciando sesión como
+ * ellas. Sirve para cuando las cuentas ya se crearon a mano desde el dashboard
+ * (Authentication → Users → Add user, con "Auto confirm user" marcado) y lo
+ * único que falta es llenarlas.
+ */
+const ADMIN_MODE = Boolean(SERVICE_ROLE_KEY);
+
+if (!ADMIN_MODE) {
+  console.warn('Sin SUPABASE_SERVICE_ROLE_KEY: modo solo-contenido.');
+  console.warn('Las dos cuentas demo tienen que existir ya y estar confirmadas.\n');
 }
 
 // La contraseña se puede fijar desde afuera para no cambiarla en cada corrida
 // — es la que se pega en App Store Connect, así que conviene que sea estable.
 const DEMO_PASSWORD = env.DEMO_PASSWORD ?? 'AppReview2026!';
+
+/** Título de la fiesta demo. Se usa también para detectar si ya se sembró. */
+const DEMO_EVENT_TITLE = 'Previa frente al mar';
 
 const REVIEWER = {
   email: env.DEMO_EMAIL ?? 'appreview@afterdune.app',
@@ -79,7 +89,7 @@ const HOST = {
   birthdate: '1997-08-02',
 };
 
-const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } });
+const admin = ADMIN_MODE ? createClient(SUPABASE_URL, SERVICE_ROLE_KEY, { auth: { persistSession: false } }) : null;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -143,6 +153,74 @@ async function completeOnboarding(userId) {
   if (error) console.warn(`  aviso: no se pudo completar el onboarding (${error.message})`);
 }
 
+/**
+ * Sube un marcador de posición al bucket de fotos de DNI y devuelve su ruta.
+ *
+ * Pedir lugar en una fiesta exige una foto de documento (`DNI_REQUIRED` en
+ * `request_event_access`), así que sin un archivo acá la demo no puede tener
+ * una solicitud cargada.
+ *
+ * Es un PNG gris liso, a propósito: fabricar algo que parezca un documento de
+ * identidad real sería crear un documento falso. Esto es claramente un relleno
+ * y cumple la única función que importa para la demo, que es existir.
+ */
+async function uploadPlaceholderDni(client, requesterId, eventId) {
+  const path = `${requesterId}/${eventId}-demo.png`;
+
+  // Sin `upsert`: la política del bucket solo autoriza INSERT (cada quien a su
+  // propia carpeta), no UPDATE. Pedir un upsert hace que Storage intente
+  // actualizar y RLS lo rechaza con "new row violates row-level security".
+  const { error } = await client.storage.from('dni-photos').upload(path, solidGrayPng(), {
+    contentType: 'image/png',
+  });
+
+  // Que ya exista es exactamente lo que se busca al re-correr el script.
+  if (error && !/already exists|Duplicate/i.test(error.message)) {
+    throw new Error(`No se pudo subir el marcador de DNI: ${error.message}`);
+  }
+  return path;
+}
+
+/** PNG de 8x8 gris, armado a mano para no depender de ninguna biblioteca. */
+function solidGrayPng() {
+  const { deflateSync } = zlib;
+  const size = 8;
+  // Cada fila va precedida por un byte de filtro (0 = sin filtro), y cada
+  // píxel son tres bytes RGB.
+  const raw = Buffer.alloc(size * (1 + size * 3), 0x9a);
+  for (let y = 0; y < size; y++) raw[y * (1 + size * 3)] = 0;
+
+  const chunk = (type, data) => {
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const typeAndData = Buffer.concat([Buffer.from(type, 'ascii'), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(typeAndData) >>> 0);
+    return Buffer.concat([length, typeAndData, crc]);
+  };
+
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(size, 0);
+  ihdr.writeUInt32BE(size, 4);
+  ihdr[8] = 8; // profundidad de bits
+  ihdr[9] = 2; // color RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk('IHDR', ihdr),
+    chunk('IDAT', deflateSync(raw)),
+    chunk('IEND', Buffer.alloc(0)),
+  ]);
+}
+
+function crc32(buf) {
+  let crc = ~0;
+  for (const byte of buf) {
+    crc ^= byte;
+    for (let i = 0; i < 8; i++) crc = (crc >>> 1) ^ (0xedb88320 & -(crc & 1));
+  }
+  return ~crc;
+}
+
 function inDays(days, hour) {
   const date = new Date();
   date.setDate(date.getDate() + days);
@@ -157,21 +235,46 @@ function inDays(days, hour) {
 async function main() {
   console.log(`Sembrando la demo en ${SUPABASE_URL}\n`);
 
-  console.log('1/5  Creando cuentas...');
-  const reviewer = await ensureUser(REVIEWER);
-  const host = await ensureUser(HOST);
-  await completeOnboarding(reviewer.id);
-  await completeOnboarding(host.id);
-  console.log(`     revisor: ${REVIEWER.email}`);
+  console.log('1/5  Preparando cuentas...');
+  if (ADMIN_MODE) {
+    const reviewerUser = await ensureUser(REVIEWER);
+    const hostUser = await ensureUser(HOST);
+    await completeOnboarding(reviewerUser.id);
+    await completeOnboarding(hostUser.id);
+  } else {
+    console.log('     (se usan las que ya existen)');
+  }
+  console.log(`     revisor:    ${REVIEWER.email}`);
   console.log(`     anfitriona: ${HOST.email}`);
 
   const hostClient = await clientFor(HOST.email);
   const reviewerClient = await clientFor(REVIEWER.email);
 
+  // Los ids salen de la sesión, no del admin: así el modo solo-contenido
+  // tiene todo lo que necesita sin la service role key.
+  const reviewer = (await reviewerClient.auth.getUser()).data.user;
+  const host = (await hostClient.auth.getUser()).data.user;
+  if (!reviewer || !host) throw new Error('No se pudo resolver el id de alguna de las cuentas demo.');
+
   console.log('2/5  Publicando una fiesta como la anfitriona...');
-  const { data: eventId, error: eventError } = await hostClient.rpc('create_event_with_location', {
+
+  // Idempotencia: si ya hay una fiesta demo publicada, se reutiliza en vez de
+  // acumular una copia nueva por cada corrida del script.
+  const { data: existing } = await hostClient
+    .from('events')
+    .select('id')
+    .eq('organizer_id', host.id)
+    .eq('title', DEMO_EVENT_TITLE)
+    .maybeSingle();
+
+  let eventId = existing?.id ?? null;
+
+  if (eventId) {
+    console.log(`     ya existía: ${eventId}`);
+  } else {
+  const { data: created, error: eventError } = await hostClient.rpc('create_event_with_location', {
     p_category_slug: 'previa',
-    p_title: 'Previa frente al mar',
+    p_title: DEMO_EVENT_TITLE,
     p_description:
       'Juntada tranquila antes de salir, con música, picada y buena onda. Traete algo para compartir. Cupo limitado, pedí lugar y te confirmo.',
     p_venue_type: 'casa',
@@ -193,14 +296,26 @@ async function main() {
     p_organizer_confirmed_authorization: true,
   });
   if (eventError) throw new Error(`No se pudo crear la fiesta: ${eventError.message}`);
+  // create_event_with_location devuelve `public.events`, o sea la fila entera,
+  // no el id suelto.
+  eventId = typeof created === 'string' ? created : created?.id;
+  if (!eventId) throw new Error('La fiesta se creó pero no devolvió un id.');
   console.log(`     fiesta ${eventId}`);
+  }
 
   console.log('3/5  Pidiendo lugar como el revisor...');
+  const dniPath = await uploadPlaceholderDni(reviewerClient, reviewer.id, eventId);
+  // p_dni_photo_path va explícito aunque sea null: hay dos versiones de esta
+  // función (0009 y 0016) y sin el tercer parámetro Postgres no sabe cuál
+  // elegir y falla con "could not choose the best candidate function".
   const { error: requestError } = await reviewerClient.rpc('request_event_access', {
     p_event_id: eventId,
     p_message: '¡Hola! Me sumo con un amigo.',
+    p_dni_photo_path: dniPath,
   });
-  if (requestError) console.warn(`     aviso: no se pudo crear la solicitud (${requestError.message})`);
+  if (requestError && !/duplicate|already/i.test(requestError.message)) {
+    console.warn(`     aviso: no se pudo crear la solicitud (${requestError.message})`);
+  }
 
   console.log('4/5  Abriendo la conversación...');
   const { data: conversationId, error: convError } = await hostClient.rpc('ensure_direct_conversation', {
@@ -211,6 +326,20 @@ async function main() {
   if (convError) throw new Error(`No se pudo crear la conversación: ${convError.message}`);
 
   console.log('5/5  Escribiendo mensajes...');
+
+  // Sin esto, cada corrida del script apila otra copia de la misma charla y
+  // el chat de la demo termina repitiendo las mismas tres líneas N veces.
+  const { count: yaHay } = await hostClient
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('conversation_id', conversationId);
+
+  if (yaHay && yaHay > 0) {
+    console.log(`     ya había ${yaHay} mensajes, no se agregan`);
+    printCredentials();
+    return;
+  }
+
   const messages = [
     [hostClient, host.id, '¡Hola! Te confirmo el lugar, la dirección exacta te aparece en la fiesta.'],
     [reviewerClient, reviewer.id, 'Gracias, ahí la veo. ¿Llevo algo?'],
@@ -221,6 +350,10 @@ async function main() {
     if (error) console.warn(`     aviso: no se pudo enviar un mensaje (${error.message})`);
   }
 
+  printCredentials();
+}
+
+function printCredentials() {
   console.log('\n──────────────────────────────────────────────');
   console.log('Datos para "Sign-in information" en App Store Connect:');
   console.log(`  Usuario:    ${REVIEWER.email}`);
