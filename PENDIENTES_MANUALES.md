@@ -198,18 +198,37 @@ Hoy apuntan a `nightly-app-seven.vercel.app`, que todavía dice "nightly" aunque
 
 ---
 
-## 🟢 App Store Connect
+## App Store Connect — registro creado, falta lo que depende del binario
 
-Todo el texto a pegar está en `APP_STORE_CONNECT.md`.
+**Afterdune ya existe**: App ID de Apple **6832319681**, bundle `com.afterdune.app`.
 
-- [ ] Crear el registro de la app (nombre, bundle ID, categorías).
-- [ ] Clasificación de edad → tiene que dar **17+** (respuestas en la sección 2).
-- [ ] Cuestionario de App Privacy (respuestas en la sección 6).
-- [ ] Pegar las notas del revisor con las credenciales demo (sección 3).
-- [ ] Capturas de pantalla: hacen falta de iPhone 6.9" y 6.5", y de iPad 13" (porque `supportsTablet` está en true).
-- [ ] Enviar a revisión.
+Hecho:
 
----
+- [x] Registro de la app creado (iOS, SKU `afterdune-ios-001`).
+- [x] Nombre, subtítulo ("Previas y fiestas cerca tuyo") y categorías
+      (Redes sociales / Estilo de vida).
+- [x] Descripción, palabras clave, texto promocional, URL de soporte y copyright.
+- [x] **Clasificación por edades: 18+**. El cuestionario calculaba 13+, pero
+      Apple exige que si el EULA fija una edad mínima se la declare, así que se
+      reemplazó a mano. Queda 18+ en 173 países, A18 en Brasil, 19+ en Corea y
+      17+ en sistemas anteriores a iOS 26.
+- [x] `eas.json` con `appleTeamId` y `ascAppId` reales: `eas submit` ya está
+      configurado del todo.
+
+Falta:
+
+- [ ] **Cuestionario de App Privacy** (respuestas en `APP_STORE_CONNECT.md` sec. 6).
+- [ ] **URL de la Política de Privacidad** (el campo vive dentro de App Privacy).
+- [ ] **Notas para el revisor** con las credenciales demo (sec. 3). La cuenta ya
+      existe: `appreview@afterdune.app` / `AppReview2026!`.
+- [ ] **Capturas de pantalla**: iPhone 6.9", 6.5" e iPad 13". Las de iPad son
+      obligatorias porque `supportsTablet` está en true.
+- [ ] Subir el binario y enviar a revisión.
+
+> El idioma principal quedó en **Español (España)**: el desplegable de Apple no
+> acepta el valor por script y el autocompletado se detiene en la primera
+> coincidencia. Es de solo lectura una vez creada la app. No cambia nada
+> funcional — la ficha se muestra igual a todo el público hispanohablante.
 
 ## 🟢 EAS
 
