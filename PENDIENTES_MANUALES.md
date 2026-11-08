@@ -217,8 +217,15 @@ Hecho:
 
 Falta:
 
-- [ ] **Cuestionario de App Privacy** (respuestas en `APP_STORE_CONNECT.md` sec. 6).
-- [ ] **URL de la Política de Privacidad** (el campo vive dentro de App Privacy).
+- [x] **URL de la Política de Privacidad** cargada:
+      `https://nightly-app-seven.vercel.app/privacy.html` (verificada: responde 200).
+- [ ] **Cuestionario de App Privacy** — Privacidad de la app → Comenzar.
+      Las respuestas exactas están en `APP_STORE_CONNECT.md` sec. 6 y ya
+      coinciden una a una con la política de privacidad reescrita. Los seis
+      tipos a marcar: email, nombre, ubicación precisa, fotos o videos, otro
+      contenido del usuario, ID de usuario. Para los seis: **vinculado al
+      usuario = sí**, **seguimiento = no**, **finalidad = funcionalidad de la
+      app**. Y a la pregunta general de seguimiento, **no**.
 - [ ] **Notas para el revisor** con las credenciales demo (sec. 3). La cuenta ya
       existe: `appreview@afterdune.app` / `AppReview2026!`.
 - [ ] **Capturas de pantalla**: iPhone 6.9", 6.5" e iPad 13". Las de iPad son
