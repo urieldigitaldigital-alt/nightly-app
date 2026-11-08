@@ -95,28 +95,55 @@ npx supabase functions deploy login
 
 ---
 
-## 🟡 Sign in with Apple (código listo, faltan las credenciales)
+## 🟡 Sign in with Apple — falta solo la Key
 
-Apple exige revocar el permiso cuando alguien borra su cuenta. El código ya lo hace; necesita cuatro datos.
+Hecho en developer.apple.com (cuenta **Nara Bertini**, Team ID `26FHY23TDL`):
 
-1. [ ] En **developer.apple.com** → Identifiers → tu App ID (`com.afterdune.app`): habilitar **"Sign In with Apple"**.
-2. [ ] Crear un **Services ID** nuevo (distinto del bundle ID), para usar como client ID en Supabase.
-3. [ ] Crear una **Key** (Keys → "+") con "Sign In with Apple" habilitado y descargar el `.p8`. **Solo se puede descargar una vez.**
-4. [ ] En **Supabase** → Authentication → Providers → Apple: pegar Services ID, Team ID, Key ID y el contenido del `.p8`.
+- [x] App ID **`com.afterdune.app`** creado, con **Sign In with Apple** (como
+      primary App ID) y **Push Notifications** habilitados.
+- [x] Services ID **`com.afterdune.signin`** creado y configurado:
+      primary App ID `com.afterdune.app`, dominio
+      `hsuiitkeihiyaezixgop.supabase.co` y return URL
+      `https://hsuiitkeihiyaezixgop.supabase.co/auth/v1/callback`.
 
-   > ⚠️ **Antes de escribir nada, borrá los dos campos.** Chrome autocompleta ese
-   > formulario con basura de su gestor de contraseñas: se vio "Client IDs" relleno
-   > con `practicomoderno-rgb's Project` y "Secret Key" con una contraseña guardada
-   > cualquiera. Si se guarda así, el login con Apple falla y el error no dice por qué.
-5. [ ] En **Supabase** → Edge Functions → Secrets, cargar:
-   - `APPLE_TEAM_ID`
-   - `APPLE_KEY_ID`
-   - `APPLE_CLIENT_ID` (el bundle ID `com.afterdune.app` para el login nativo de iOS)
-   - `APPLE_PRIVATE_KEY` (el contenido completo del `.p8`, con las líneas `-----BEGIN/END PRIVATE KEY-----`)
+### Lo que falta, y es tuyo
 
-> Sin estos secrets la app funciona igual y la cuenta se borra igual: lo único que no pasa es la notificación de revocación a Apple. El código degrada solo y deja el aviso en el log, nunca falla el borrado.
+La **Key** no la crea nadie más que vos, porque el `.p8` **se descarga una sola
+vez en la vida**: si se crea y no se baja en ese momento queda inservible y
+encima ocupa uno de los pocos espacios de key de la cuenta. Además es la clave
+con la que se firman los tokens de la app — quien la tenga puede hacerse pasar
+por Afterdune.
 
----
+1. [ ] developer.apple.com → **Keys** → **+**, nombre "Afterdune Sign In",
+       marcar **Sign In with Apple**, elegir `com.afterdune.app` como primary
+       App ID, y **descargar el `.p8`**. Guardalo en un lugar seguro (está en
+       `.gitignore`, no lo pongas en el repo).
+2. [ ] Anotá el **Key ID** (lo muestra Apple al crearla, 10 caracteres).
+3. [ ] **Supabase** → Authentication → Providers → **Apple**:
+       - ⚠️ **Borrá los dos campos antes de escribir.** Chrome los autocompleta
+         con basura de su gestor de contraseñas (se vio `practicomoderno-rgb's
+         Project` en "Client IDs"). Si se guarda así, el login con Apple falla
+         sin decir por qué.
+       - **Client IDs**: `com.afterdune.app,com.afterdune.signin`
+         (los dos, separados por coma y sin espacio: el primero es el login
+         nativo de iOS, el segundo el de web.)
+       - **Secret Key**: el contenido completo del `.p8`.
+       - Activar **Enable Sign in with Apple** y guardar.
+4. [ ] **Supabase** → Edge Functions → **Secrets**:
+       - `APPLE_TEAM_ID` = `26FHY23TDL`
+       - `APPLE_KEY_ID` = el del paso 2
+       - `APPLE_CLIENT_ID` = `com.afterdune.app`
+       - `APPLE_PRIVATE_KEY` = el contenido del `.p8`, con las líneas
+         `-----BEGIN PRIVATE KEY-----` y `-----END PRIVATE KEY-----` incluidas.
+
+Para comprobar que quedó bien, sin abrir la app:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  "https://hsuiitkeihiyaezixgop.supabase.co/auth/v1/authorize?provider=apple&redirect_to=https://example.com"
+```
+
+`302` = funciona. `400` = sigue deshabilitado.
 
 ## ✅ Configuración de Supabase Auth — HECHO lo que bloqueaba
 
@@ -131,15 +158,34 @@ Queda pendiente, pero no bloquea el envío:
 
 ---
 
-## 🟡 Cuenta demo para el revisor
+## ✅ Cuenta demo para el revisor — HECHA
+
+Creada en producción y verificada de punta a punta.
+
+| Campo de App Store Connect | Valor |
+|---|---|
+| Sign-In required | Sí |
+| User name | `appreview@afterdune.app` |
+| Password | `AppReview2026!` |
+
+Contenido que ya tiene cargado: una fiesta publicada ("Previa frente al mar",
+a 50 km de Pinamar), una solicitud de asistencia pendiente y una conversación
+con tres mensajes con la segunda cuenta (`demo.host@afterdune.app`,
+`@lucia_demo`).
+
+Verificado: entra por email **y** por `@appreview` (login con nombre de
+usuario), el perfil está completo y el onboarding marcado como hecho, así que
+el revisor cae directo en el feed.
+
+Para refrescarla antes de un envío:
 
 ```bash
-SUPABASE_SERVICE_ROLE_KEY=eyJ... node scripts/seed-reviewer-demo.mjs
+node scripts/seed-reviewer-demo.mjs
 ```
 
-La service role key está en Supabase → Project Settings → API. El script crea dos cuentas, publica una fiesta, deja una solicitud pendiente y una conversación con mensajes, y al final imprime el usuario y la contraseña para pegar en App Store Connect.
-
-Es idempotente: se puede correr de nuevo antes de cada envío.
+Es idempotente: reutiliza la fiesta y no vuelve a escribir los mensajes. Sin
+`SUPABASE_SERVICE_ROLE_KEY` corre igual, en modo solo-contenido, usando las
+cuentas que ya existen.
 
 ---
 

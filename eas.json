@@ -25,8 +25,8 @@
   "submit": {
     "production": {
       "ios": {
-        "ascAppId": "RELLENAR_CON_EL_APP_ID_DE_APP_STORE_CONNECT",
-        "appleTeamId": "RELLENAR_CON_EL_TEAM_ID"
+        "ascAppId": "RELLENAR_AL_CREAR_LA_APP_EN_APP_STORE_CONNECT",
+        "appleTeamId": "26FHY23TDL"
       }
     }
   }
