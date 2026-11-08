@@ -114,11 +114,12 @@ encima ocupa uno de los pocos espacios de key de la cuenta. Además es la clave
 con la que se firman los tokens de la app — quien la tenga puede hacerse pasar
 por Afterdune.
 
-1. [ ] developer.apple.com → **Keys** → **+**, nombre "Afterdune Sign In",
-       marcar **Sign In with Apple**, elegir `com.afterdune.app` como primary
-       App ID, y **descargar el `.p8`**. Guardalo en un lugar seguro (está en
-       `.gitignore`, no lo pongas en el repo).
-2. [ ] Anotá el **Key ID** (lo muestra Apple al crearla, 10 caracteres).
+1. [x] Key creada en developer.apple.com → Keys, con Sign in with Apple y
+       `com.afterdune.app` como primary App ID.
+       - [ ] **Descargar el `.p8`** y guardarlo fuera del repo. El botón
+             Download sirve una sola vez: si se cierra la pantalla sin bajarlo,
+             Apple borra su copia y hay que crear otra key.
+2. [x] **Key ID: `KFS3BLBPJM`** (key "Afterdune Sign In", servicio Sign in with Apple).
 3. [ ] **Supabase** → Authentication → Providers → **Apple**:
        - ⚠️ **Borrá los dos campos antes de escribir.** Chrome los autocompleta
          con basura de su gestor de contraseñas (se vio `practicomoderno-rgb's
@@ -131,7 +132,7 @@ por Afterdune.
        - Activar **Enable Sign in with Apple** y guardar.
 4. [ ] **Supabase** → Edge Functions → **Secrets**:
        - `APPLE_TEAM_ID` = `26FHY23TDL`
-       - `APPLE_KEY_ID` = el del paso 2
+       - `APPLE_KEY_ID` = `KFS3BLBPJM`
        - `APPLE_CLIENT_ID` = `com.afterdune.app`
        - `APPLE_PRIVATE_KEY` = el contenido del `.p8`, con las líneas
          `-----BEGIN PRIVATE KEY-----` y `-----END PRIVATE KEY-----` incluidas.
