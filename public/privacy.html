@@ -5,41 +5,137 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Política de Privacidad — Afterdune</title>
 <style>
-  body { background:#080808; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; max-width:720px; margin:0 auto; padding:40px 20px 80px; line-height:1.6; }
+  body { background:#080808; color:#fff; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; max-width:760px; margin:0 auto; padding:40px 20px 80px; line-height:1.6; }
   h1 { color:#C8FF4D; font-size:28px; }
   h2 { color:#fff; font-size:19px; margin-top:36px; }
-  p, li { color:#d4d4d8; font-size:15px; }
+  h3 { color:#fff; font-size:16px; margin-top:24px; }
+  p, li, td, th { color:#d4d4d8; font-size:15px; }
   a { color:#C8FF4D; }
   .updated { color:#6B6B70; font-size:13px; margin-bottom:32px; }
+  table { width:100%; border-collapse:collapse; margin:16px 0; }
+  th, td { text-align:left; padding:10px 12px; border-bottom:1px solid #262629; vertical-align:top; font-size:14px; }
+  th { color:#fff; font-weight:600; }
+  .highlight { border-left:3px solid #C8FF4D; padding:12px 16px; background:#121212; border-radius:0 8px 8px 0; margin:20px 0; }
+  .highlight p { margin:0; color:#fff; }
 </style>
 </head>
 <body>
   <h1>Política de Privacidad de Afterdune</h1>
   <p class="updated">Última actualización: noviembre de 2026</p>
 
-  <p>Afterdune es una aplicación para descubrir previas, fiestas y eventos cerca tuyo. Esta política explica qué datos recolectamos, para qué los usamos y qué derechos tenés sobre ellos.</p>
+  <p>Esta política explica qué datos recoge Afterdune, para qué los usa, con quién los comparte, cuánto tiempo los guarda y cómo podés borrarlos. Está escrita para que se entienda, no para cubrirnos.</p>
 
-  <h2>Qué datos recolectamos</h2>
+  <p><strong>Lo esencial en cuatro puntos:</strong> Afterdune es solo para mayores de 18 años. No vendemos tus datos. No hacemos seguimiento publicitario ni usamos tus datos en otras apps o sitios. Podés borrar tu cuenta entera desde la app, sin pedirle permiso a nadie.</p>
+
+  <h2>1. Quién es responsable de tus datos</h2>
+  <p>Afterdune es responsable del tratamiento de los datos descritos acá. Contacto para cualquier tema de privacidad: <a href="mailto:soporte@afterdune.app">soporte@afterdune.app</a>.</p>
+
+  <h2>2. Qué datos recogemos y para qué</h2>
+
+  <table>
+    <tr><th>Dato</th><th>Para qué</th><th>Cuándo se recoge</th></tr>
+    <tr><td>Email</td><td>Crear tu cuenta, iniciar sesión, recuperar la contraseña</td><td>Al registrarte</td></tr>
+    <tr><td>Nombre visible y nombre de usuario</td><td>Que los demás sepan quién sos</td><td>Al registrarte</td></tr>
+    <tr><td>Fecha de nacimiento</td><td>Verificar que sos mayor de 18</td><td>Al registrarte</td></tr>
+    <tr><td>Contraseña</td><td>Acceder a tu cuenta</td><td>Al registrarte. Se guarda cifrada con bcrypt; nadie, ni nosotros, puede leerla</td></tr>
+    <tr><td>Ubicación precisa</td><td>Mostrarte fiestas cerca tuyo y guiarte hasta una</td><td>Solo mientras usás la app, y solo si diste permiso</td></tr>
+    <tr><td>Fotos que elegís</td><td>Foto de perfil, portada de fiesta, imágenes en el chat</td><td>Solo las que seleccionás a mano</td></tr>
+    <tr><td>Foto de documento (DNI)</td><td>Que el organizador confirme tu identidad antes de aceptarte</td><td>Solo al pedir lugar en una fiesta. Ver sección 4</td></tr>
+    <tr><td>Mensajes de chat</td><td>Que puedas hablar con organizadores y asistentes</td><td>Al escribirlos</td></tr>
+    <tr><td>Fiestas, solicitudes y asistencias</td><td>Hacer funcionar la app</td><td>Al usarla</td></tr>
+    <tr><td>Token de notificaciones push</td><td>Avisarte de solicitudes, mensajes y cambios</td><td>Si aceptás las notificaciones</td></tr>
+    <tr><td>Intereses musicales y ciudad</td><td>Recomendarte mejor</td><td>En el onboarding, opcional</td></tr>
+  </table>
+
+  <div class="highlight">
+    <p><strong>Lo que NO recogemos:</strong> no usamos identificadores de publicidad, no hacemos perfilado publicitario, no accedemos a tu agenda de contactos, no leemos tu galería de fotos (solo recibimos la foto puntual que elegís), no usamos el micrófono ni la cámara, y <strong>nunca accedemos a tu ubicación en segundo plano</strong> — si la app no está abierta, no sabemos dónde estás.</p>
+  </div>
+
+  <h2>3. Ubicación</h2>
+  <p>La ubicación se usa solo mientras tenés la app abierta ("while in use"), para tres cosas: ordenar las fiestas por distancia, ubicarte en el mapa, y calcular el camino cuando pedís "Cómo llegar". Podés usar Afterdune sin dar el permiso: elegís una ciudad a mano y todo lo demás funciona igual.</p>
+
+  <h3>Compartir tu ubicación en vivo</h3>
+  <p>Si vas camino a una fiesta, podés elegir compartir tu posición en vivo con el organizador. Es opcional, se te pregunta cada vez, solo la ve ese organizador, y <strong>se deja de compartir y se borra automáticamente a los 30 minutos</strong> de la última actualización.</p>
+
+  <h3>Direcciones de las fiestas</h3>
+  <p>La dirección exacta de una fiesta solo la ven quienes el organizador aceptó. Al resto se le muestra un punto desplazado al azar dentro de la zona, nunca el domicilio real.</p>
+
+  <h2>4. Foto de documento (DNI)</h2>
+  <p>Al pedir lugar en una fiesta se te pide una foto de tu documento. Es el mecanismo que tiene el organizador para saber a quién está dejando entrar a su casa.</p>
   <ul>
-    <li><strong>Datos de cuenta:</strong> email, nombre de usuario, nombre para mostrar, fecha de nacimiento (para verificar que seas mayor de 18 años).</li>
-    <li><strong>Datos de perfil opcionales:</strong> foto de perfil, biografía, ciudad, intereses musicales.</li>
-    <li><strong>Ubicación:</strong> si la autorizás, usamos tu ubicación para mostrarte eventos dentro del radio que elijas y, durante una navegación activa hacia una fiesta a la que fuiste aceptado, para guiarte y permitir que el organizador vea que te estás acercando (solo si vos lo autorizás explícitamente antes de cada navegación). Nunca la usamos para rastrearte fuera de la app, y la navegación corta la ubicación compartida apenas llegás o la cancelás.</li>
-    <li><strong>Foto de tu DNI:</strong> cuando solicitás acceso a una fiesta que lo requiere, te pedimos una foto de tu DNI para que el organizador pueda confirmar tu identidad en la puerta. Solo la ve el organizador de esa fiesta puntual (a través de un enlace temporal, nunca como archivo público) y se borra automáticamente de nuestros servidores a los pocos días de terminada la fiesta.</li>
-    <li><strong>Contenido que publicás:</strong> fiestas, fotos de portada, mensajes y fotos de chat, solicitudes de acceso.</li>
-    <li><strong>Token de notificaciones push:</strong> si aceptás recibir notificaciones, guardamos un identificador técnico de tu dispositivo (no tu ubicación ni contenido) para poder enviarte avisos de solicitudes, mensajes y fiestas cercanas.</li>
-    <li><strong>Si usás "Continuar con Google" o "Continuar con Apple":</strong> recibimos tu nombre, email y foto de perfil según lo que autorices en esa pantalla. Con Apple, si elegís ocultar tu email, recibimos solo la dirección de relevo que Apple genera.</li>
+    <li>Se guarda en un bucket privado, cifrado, al que no se puede acceder por una URL pública.</li>
+    <li><strong>Solo la ve el organizador de esa fiesta</strong>, y solo mientras tu solicitud está activa.</li>
+    <li><strong>Se borra automáticamente 5 días después de que termina la fiesta</strong>, mediante una tarea programada que corre todos los días a las 4 de la mañana.</li>
+    <li>No la usamos para ninguna otra cosa, no la compartimos con nadie más, y no extraemos ningún dato de ella.</li>
   </ul>
 
-  <h2>Cómo protegemos las direcciones privadas</h2>
-  <p>La dirección exacta de una fiesta en un domicilio particular nunca se publica. Solo el organizador y las personas que acepta pueden verla. En el mapa público, esos eventos se muestran con una ubicación aproximada.</p>
+  <h2>5. Con quién compartimos datos</h2>
+  <p>No vendemos ni alquilamos datos a nadie. Los compartimos únicamente con los proveedores que hacen funcionar la app, y solo lo mínimo que cada uno necesita:</p>
 
-  <h2>Con quién compartimos datos</h2>
-  <p>No vendemos tus datos. Los compartimos únicamente con los proveedores que hacen funcionar la app: Supabase (base de datos, autenticación y almacenamiento de fotos) y, si elegís iniciar sesión así, Google o Apple. No hacemos publicidad dirigida con tus datos.</p>
+  <table>
+    <tr><th>Proveedor</th><th>Qué recibe</th><th>Para qué</th></tr>
+    <tr><td><strong>Supabase</strong></td><td>Todos los datos de la app</td><td>Es nuestra base de datos y nuestro servicio de autenticación y archivos. Actúa como encargado del tratamiento, bajo nuestras instrucciones</td></tr>
+    <tr><td><strong>Apple</strong> y <strong>Google</strong></td><td>Tu identificador de la cuenta con la que entrás</td><td>Solo si elegís "Continuar con Apple" o "Continuar con Google"</td></tr>
+    <tr><td><strong>Expo</strong> (Expo Push)</td><td>El token de tu dispositivo y el texto del aviso</td><td>Entregar las notificaciones push</td></tr>
+    <tr><td><strong>OpenFreeMap</strong></td><td>Las coordenadas de la zona del mapa que estás mirando</td><td>Servir las imágenes del mapa. Es inherente a cualquier mapa: para dibujarlo hay que pedir esa zona</td></tr>
+    <tr><td><strong>OSRM</strong></td><td>El punto de origen y el de destino de tu viaje</td><td>Calcular el recorrido y el tiempo estimado, solo cuando tocás "Cómo llegar"</td></tr>
+  </table>
 
-  <h2>Tus derechos</h2>
-  <p>Podés editar tu perfil o eliminar tu cuenta en cualquier momento desde la app (Configuración → Cuenta → Eliminar cuenta). Eliminar tu cuenta borra de forma permanente tu perfil, tus fiestas publicadas, tus mensajes, tus fotos (incluida cualquier foto de DNI no borrada todavía) y tu información de inicio de sesión.</p>
+  <p>También podemos entregar datos si nos lo exige una autoridad competente por una orden válida, o para proteger la vida o la integridad de alguien.</p>
 
-  <h2>Contacto</h2>
-  <p>Para cualquier consulta sobre privacidad, escribinos a <a href="mailto:soporte@afterdune.app">soporte@afterdune.app</a>.</p>
+  <h2>6. Qué ven los demás usuarios</h2>
+  <p>Son públicos dentro de la app: tu nombre visible, tu nombre de usuario, tu foto de perfil, tu biografía, tu ciudad, tus intereses musicales y las fiestas que publicaste.</p>
+  <p>No son públicos: tu email, tu contraseña, tu fecha de nacimiento exacta, tu ubicación, tu foto de documento y tus mensajes privados.</p>
+
+  <h2>7. Cuánto tiempo guardamos cada cosa</h2>
+  <table>
+    <tr><th>Dato</th><th>Retención</th></tr>
+    <tr><td>Cuenta y perfil</td><td>Mientras tengas la cuenta abierta</td></tr>
+    <tr><td>Ubicación en vivo compartida</td><td>30 minutos desde la última actualización</td></tr>
+    <tr><td>Foto de documento</td><td>5 días después de que termina la fiesta</td></tr>
+    <tr><td>Mensajes de chat</td><td>Mientras exista la conversación, o hasta que borres tu cuenta</td></tr>
+    <tr><td>Fiestas pasadas</td><td>Se marcan como finalizadas y dejan de mostrarse al terminar</td></tr>
+    <tr><td>Denuncias</td><td>Se conservan aunque se resuelvan, para poder detectar a quien reincide</td></tr>
+  </table>
+
+  <h2>8. Cómo borrar tu cuenta</h2>
+
+  <div class="highlight">
+    <p>Desde la app: <strong>Perfil → Configuración → Cuenta → Eliminar cuenta</strong>. Te pide escribir ELIMINAR para confirmar. No hace falta escribirnos ni completar ningún formulario externo.</p>
+  </div>
+
+  <p>Es inmediato y permanente. Se borra:</p>
+  <ul>
+    <li>Tu perfil, tu foto y tu biografía.</li>
+    <li>Las fiestas que publicaste.</li>
+    <li>Tus solicitudes y confirmaciones de asistencia.</li>
+    <li>Tus conversaciones y mensajes.</li>
+    <li>Todas las fotos que subiste, incluida la del documento.</li>
+    <li>Tu usuario de autenticación y tus tokens de notificaciones.</li>
+  </ul>
+
+  <p>Si entraste con Apple, además le avisamos a Apple que revoque el permiso, para que Afterdune desaparezca también de la lista de apps de tu cuenta de Apple.</p>
+
+  <p>Lo único que puede sobrevivir a la eliminación son los registros de moderación de una denuncia en curso, sin tus datos de contacto, cuando hacen falta para proteger a otra persona.</p>
+
+  <h2>9. Tus derechos</h2>
+  <p>Podés pedirnos en cualquier momento: acceder a los datos que tenemos sobre vos, corregirlos, borrarlos, o recibir una copia en un formato legible por máquina. Escribinos a <a href="mailto:soporte@afterdune.app">soporte@afterdune.app</a> y respondemos dentro de los 10 días hábiles.</p>
+  <p>En Argentina, la Agencia de Acceso a la Información Pública es el órgano de control de la Ley 25.326 de Protección de los Datos Personales y atiende las denuncias de quien considere que sus derechos fueron afectados. Si te escribe desde la Unión Europea o el Reino Unido, también te asisten los derechos del RGPD y podés reclamar ante tu autoridad de control local.</p>
+
+  <h2>10. Menores de edad</h2>
+  <p>Afterdune es solo para mayores de 18 años. No recogemos datos de menores a sabiendas: la fecha de nacimiento se valida contra una restricción en la base de datos, no solo en la pantalla. Si detectamos una cuenta de una persona menor de edad, la eliminamos junto con sus datos. Si sos madre, padre o tutor y creés que un menor a tu cargo creó una cuenta, escribinos y la borramos.</p>
+
+  <h2>11. Seguridad</h2>
+  <p>Todo el tráfico va cifrado con HTTPS. Las contraseñas se guardan con un hash bcrypt. El acceso a los datos está gobernado por reglas de seguridad a nivel de fila en la base de datos, o sea que lo que no te corresponde ver no te lo devuelve el servidor — no depende de que la app te esconda un botón. Las fotos de documento y las imágenes de chat viven en buckets privados.</p>
+  <p>Ningún sistema es infalible. Si llegara a ocurrir una filtración que afecte tus datos, te vamos a avisar y a notificar a la autoridad que corresponda.</p>
+
+  <h2>12. Transferencias internacionales</h2>
+  <p>Nuestros servidores están alojados en Estados Unidos. Al usar Afterdune, tus datos se procesan allí.</p>
+
+  <h2>13. Cambios en esta política</h2>
+  <p>Si la cambiamos de manera sustancial te vamos a avisar dentro de la app antes de que entre en vigencia. La fecha de arriba siempre indica la última actualización.</p>
+
+  <h2>14. Contacto</h2>
+  <p><a href="mailto:soporte@afterdune.app">soporte@afterdune.app</a> — respondemos dentro de las 24 horas.</p>
 </body>
 </html>

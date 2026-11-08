@@ -311,8 +311,8 @@ export default function EventDetailScreen() {
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>Subí una foto de tu DNI</Text>
           <Text style={styles.modalBody}>
-            Solo la ve el organizador para confirmar que sos vos, y se borra automáticamente a los pocos días de
-            terminada la fiesta.
+            Solo la ve el organizador para confirmar que sos vos, y se borra automáticamente 5 días después de que
+            termina la fiesta.
           </Text>
 
           <Pressable style={styles.dniPicker} onPress={handlePickDniPhoto}>
