@@ -38,17 +38,28 @@ brew install ruby cocoapods && npx expo run:ios
 
 ---
 
-## 🔴 Bloqueante — migraciones de base de datos
+## ✅ Migraciones de base de datos — HECHO
 
-En el SQL Editor de Supabase (Database → SQL Editor), pegar y ejecutar **en este orden**:
+Las siete (`0019` a `0025`) se aplicaron en el proyecto **nightly** (org Clubbgayoso),
+en una sola transacción. Verificado con `node scripts/check-migrations.mjs`.
 
-- [ ] `supabase/migrations/0019_hide_blocked_from_discovery.sql`
-- [ ] `supabase/migrations/0020_expire_finished_events.sql`
-- [ ] `supabase/migrations/0021_live_locations.sql`
-- [ ] `supabase/migrations/0022_chat_images.sql`
-- [ ] `supabase/migrations/0023_content_moderation.sql` ← **el filtro de contenido. Sin esto, Apple puede rechazar por Guideline 1.2.**
-- [ ] `supabase/migrations/0024_apple_credentials.sql` ← necesario para revocar el token de Apple.
-- [ ] `supabase/migrations/0025_username_login.sql` ← aviso de "usuario ya en uso" y login con nombre de usuario.
+El filtro de contenido quedó probado contra la base real:
+
+| Texto | Resultado |
+|---|---|
+| `vendo merca en la previa` | blocked |
+| `v3nd0 c0c41n4` (leetspeak) | blocked |
+| `Previa tranqui, traigan birra` | pasa |
+| `che boludo venite` | pasa |
+| `fiesta con desnudos artisticos` | flagged |
+| usuario `admin` | reservado |
+
+107 términos cargados en `moderation_terms`.
+
+> **Ojo con la cuenta**: el proyecto vive en una cuenta de Supabase distinta de la
+> que se abre por defecto. Si el dashboard dice *"You do not have access to this
+> project"*, estás en la cuenta equivocada — hay que entrar con la que es dueña de
+> la organización **Clubbgayoso**.
 
 ---
 
@@ -76,6 +87,11 @@ Apple exige revocar el permiso cuando alguien borra su cuenta. El código ya lo 
 2. [ ] Crear un **Services ID** nuevo (distinto del bundle ID), para usar como client ID en Supabase.
 3. [ ] Crear una **Key** (Keys → "+") con "Sign In with Apple" habilitado y descargar el `.p8`. **Solo se puede descargar una vez.**
 4. [ ] En **Supabase** → Authentication → Providers → Apple: pegar Services ID, Team ID, Key ID y el contenido del `.p8`.
+
+   > ⚠️ **Antes de escribir nada, borrá los dos campos.** Chrome autocompleta ese
+   > formulario con basura de su gestor de contraseñas: se vio "Client IDs" relleno
+   > con `practicomoderno-rgb's Project` y "Secret Key" con una contraseña guardada
+   > cualquiera. Si se guarda así, el login con Apple falla y el error no dice por qué.
 5. [ ] En **Supabase** → Edge Functions → Secrets, cargar:
    - `APPLE_TEAM_ID`
    - `APPLE_KEY_ID`
@@ -86,10 +102,14 @@ Apple exige revocar el permiso cuando alguien borra su cuenta. El código ya lo 
 
 ---
 
-## 🟡 Configuración de Supabase Auth
+## ✅ Configuración de Supabase Auth — HECHO lo que bloqueaba
 
-- [ ] **Activar "Confirm email"** (Authentication → Settings). Hoy está apagado, así que la pantalla de código de 6 dígitos nunca se usa en producción.
-- [ ] **Actualizar la plantilla "Confirm sign up"**: agregar `{{ .Token }}` bien visible (grande, buen contraste) además del botón, porque la app pide el código de 6 dígitos.
+- [x] **"Confirm email"**: ya estaba activado. (La versión anterior de este archivo decía que estaba apagado; estaba desactualizada.)
+- [x] **Plantilla "Confirm sign up"**: reescrita con el código de 6 dígitos en grande (`{{ .Token }}`, verde sobre panel oscuro, con "vence en 1 hora") y el botón del link debajo como alternativa. Antes mandaba **solo el link**, así que quien se registraba no tenía manera de completar la pantalla que le pide el código.
+      Todo el texto va con entidades HTML (`&aacute;` en vez de `á`): pegar acentos directo en el editor de Supabase los rompe (quedan como `Confirm√°`).
+
+Queda pendiente, pero no bloquea el envío:
+
 - [ ] Revisar las otras plantillas (Reset password, Magic link, Invite, Change email) por si todavía dicen "NIGHTLY".
 - [ ] Configurar SMTP propio con SPF/DKIM para que los mails no caigan en spam.
 
