@@ -50,7 +50,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <Screen edges={['top', 'bottom']} padded>
+    <Screen navBar edges={['top']} padded>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />

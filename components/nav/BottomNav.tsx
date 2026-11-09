@@ -4,6 +4,7 @@ import { Platform, StyleSheet, Text, View } from 'react-native';
 // `@react-navigation/bottom-tabs` no es una dependencia directa del proyecto
 // y agregarla traería una segunda versión del navegador.
 import type { BottomTabBarProps } from 'expo-router/build/layouts/Tabs';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
@@ -22,29 +23,39 @@ import { PressableScale } from '@/components/ui/PressableScale';
  * detrás y un botón central elevado con degradé y resplandor. Se cambió a
  * propósito. Ese patrón está en todas las maquetas de app que circulan y
  * hace que el producto se lea como una demo: llama la atención sobre la
- * navegación, que es justo lo que no tiene que hacer. Una barra que no se
- * nota deja mirar el contenido, y es lo que hacen las apps que uno usa todos
- * los días.
+ * navegación, que es justo lo que no tiene que hacer.
  *
  * "Publicar" queda como una pestaña más, con su ícono de más. Sigue en el
  * medio, que es el lugar más cómodo para el pulgar.
+ *
+ * Hay dos formas de montarla:
+ *
+ * - `BottomNav` es la que dibuja el navegador de pestañas.
+ * - `GlobalNavBar` es la misma barra en una pantalla que se abrió por
+ *   encima de las pestañas (Boliches, Tendencias, Notificaciones…). Sin
+ *   ella, al entrar a una sección la barra desaparecía y solo se podía
+ *   volver un paso atrás, nunca saltar a otra sección.
  */
 
 const CONTENT_HEIGHT = 56;
 
 type TabMeta = {
+  route: string;
   label: string;
   icon: keyof typeof Ionicons.glyphMap;
   iconActive: keyof typeof Ionicons.glyphMap;
 };
 
 const TABS: Record<string, TabMeta> = {
-  discover: { label: 'Inicio', icon: 'compass-outline', iconActive: 'compass' },
-  map: { label: 'Mapa', icon: 'map-outline', iconActive: 'map' },
-  publish: { label: 'Publicar', icon: 'add-circle-outline', iconActive: 'add-circle' },
-  chat: { label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
-  profile: { label: 'Perfil', icon: 'person-outline', iconActive: 'person' },
+  discover: { route: '/(tabs)/discover', label: 'Inicio', icon: 'compass-outline', iconActive: 'compass' },
+  map: { route: '/(tabs)/map', label: 'Mapa', icon: 'map-outline', iconActive: 'map' },
+  publish: { route: '/(tabs)/publish', label: 'Publicar', icon: 'add-circle-outline', iconActive: 'add-circle' },
+  chat: { route: '/(tabs)/chat', label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
+  profile: { route: '/(tabs)/profile', label: 'Perfil', icon: 'person-outline', iconActive: 'person' },
 };
+
+/** El orden en que se dibujan. Coincide con el de `app/(tabs)/_layout.tsx`. */
+const TAB_ORDER = ['discover', 'map', 'publish', 'chat', 'profile'] as const;
 
 function vibrateTap() {
   if (Platform.OS === 'web') {
@@ -58,27 +69,69 @@ function vibrateTap() {
   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
 }
 
+/** La barra del navegador de pestañas. */
 export function BottomNav({ state, navigateToTab, insets }: BottomTabBarProps) {
   return (
-    <View style={[styles.root, { paddingBottom: insets.bottom }]}>
-      <View style={styles.row}>
-        {state.routes.map((route, index) => {
-          const meta = TABS[route.name];
-          if (!meta) return null;
+    <Bar paddingBottom={insets.bottom}>
+      {state.routes.map((route, index) => {
+        const meta = TABS[route.name];
+        if (!meta) return null;
+        return (
+          <Tab
+            key={route.key}
+            meta={meta}
+            focused={state.index === index}
+            // `navigateToTab` ya se encarga sola de emitir `tabPress` y de
+            // volver a la raíz de la pestaña si se toca la que ya está
+            // abierta.
+            onPress={() => navigateToTab(route.key)}
+          />
+        );
+      })}
+    </Bar>
+  );
+}
 
-          return (
-            <Tab
-              key={route.key}
-              meta={meta}
-              focused={state.index === index}
-              // `navigateToTab` ya se encarga sola de emitir `tabPress` y de
-              // volver a la raíz de la pestaña si se toca la que ya está
-              // abierta.
-              onPress={() => navigateToTab(route.key)}
-            />
-          );
-        })}
-      </View>
+/**
+ * La misma barra, para pantallas que se abren por encima de las pestañas.
+ *
+ * Ninguna queda marcada como activa, y es correcto: la persona no está
+ * parada en ninguna pestaña, está en una pantalla aparte. Marcar una sería
+ * mentirle sobre dónde está.
+ *
+ * Se usa `navigate` y no `push`: si la pestaña ya está en el historial,
+ * vuelve a ella en lugar de apilar una copia. Sin eso, ir y venir entre
+ * secciones dejaría una pila infinita y el gesto de volver nunca llegaría
+ * al inicio.
+ */
+export function GlobalNavBar() {
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+
+  return (
+    <Bar paddingBottom={insets.bottom}>
+      {TAB_ORDER.map((key) => {
+        const meta = TABS[key];
+        return (
+          <Tab
+            key={key}
+            meta={meta}
+            focused={false}
+            onPress={() => {
+              vibrateTap();
+              router.navigate(meta.route as never);
+            }}
+          />
+        );
+      })}
+    </Bar>
+  );
+}
+
+function Bar({ children, paddingBottom }: { children: React.ReactNode; paddingBottom: number }) {
+  return (
+    <View style={[styles.root, { paddingBottom }]}>
+      <View style={styles.row}>{children}</View>
     </View>
   );
 }

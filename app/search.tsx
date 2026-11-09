@@ -23,7 +23,7 @@ export default function SearchScreen() {
   const hasResults = (events.data?.length ?? 0) > 0 || (profiles.data?.length ?? 0) > 0;
 
   return (
-    <Screen edges={['top', 'bottom']} padded>
+    <Screen navBar edges={['top']} padded>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={10}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />

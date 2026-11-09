@@ -3,6 +3,7 @@ import { StyleSheet, View, ViewStyle } from 'react-native';
 import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import { colors } from '@/constants/theme';
 import { useResponsive } from '@/hooks/useResponsive';
+import { GlobalNavBar, useBottomNavInset } from '@/components/nav/BottomNav';
 
 type Props = PropsWithChildren<{
   edges?: Edge[];
@@ -19,10 +20,29 @@ type Props = PropsWithChildren<{
    * `fullBleed`.
    */
   fullBleed?: boolean;
+  /**
+   * Dibuja la barra de pestañas en una pantalla que se abrió por encima de
+   * ellas, para poder saltar a otra sección sin tener que volver atrás
+   * primero.
+   *
+   * El espacio se descuenta acá, del alto del contenido, y no con un
+   * `paddingBottom` en cada lista: así alcanza con activarlo y ninguna
+   * pantalla tiene que acordarse de dejar lugar.
+   */
+  navBar?: boolean;
 }>;
 
-export function Screen({ children, edges = ['top'], style, padded = false, fullBleed = false }: Props) {
+export function Screen({
+  children,
+  edges = ['top'],
+  style,
+  padded = false,
+  fullBleed = false,
+  navBar = false,
+}: Props) {
   const { isWide, readingWidth, gutter } = useResponsive();
+  const navInset = useBottomNavInset();
+  const reserve = navBar ? { paddingBottom: navInset } : null;
 
   // Solo entra en juego en pantallas anchas: en teléfono el contenido ya
   // ocupa todo y envolverlo en otra View sería una capa de más.
@@ -31,12 +51,13 @@ export function Screen({ children, edges = ['top'], style, padded = false, fullB
   return (
     <SafeAreaView edges={edges} style={[styles.root, style]}>
       {constrain ? (
-        <View style={styles.centerRow}>
+        <View style={[styles.centerRow, reserve]}>
           <View style={[styles.column, { maxWidth: readingWidth, paddingHorizontal: gutter }]}>{children}</View>
         </View>
       ) : (
-        <View style={[styles.fill, padded && { paddingHorizontal: gutter }]}>{children}</View>
+        <View style={[styles.fill, padded && { paddingHorizontal: gutter }, reserve]}>{children}</View>
       )}
+      {navBar ? <GlobalNavBar /> : null}
     </SafeAreaView>
   );
 }

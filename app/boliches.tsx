@@ -35,7 +35,7 @@ export default function VenuesScreen() {
   }, [venues, query]);
 
   return (
-    <Screen edges={['top']}>
+    <Screen navBar edges={['top']}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <View style={[styles.header, { paddingHorizontal: gutter }]}>
