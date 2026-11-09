@@ -2,7 +2,6 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
-import { useBottomNavInset } from '@/components/nav/BottomNav';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -32,7 +31,6 @@ const STATUS_TONE: Record<string, 'neutral' | 'accent' | 'warning' | 'danger'> =
 export default function PublishScreen() {
   const router = useRouter();
   const myEvents = useMyEvents();
-  const navInset = useBottomNavInset();
 
   return (
     <Screen edges={['top']} padded>
@@ -60,8 +58,7 @@ export default function PublishScreen() {
         <FlatList
           data={myEvents.data.slice(0, 5)}
           keyExtractor={(e) => e.id}
-          // La barra de pestañas flota sobre el contenido.
-          contentContainerStyle={{ paddingBottom: navInset }}
+          contentContainerStyle={{ paddingBottom: spacing.xl }}
           ItemSeparatorComponent={() => <View style={{ height: spacing.sm }} />}
           renderItem={({ item }) => (
             <Pressable style={styles.eventRow} onPress={() => router.push(`/event/${item.id}`)}>

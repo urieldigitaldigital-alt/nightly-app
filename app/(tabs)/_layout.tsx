@@ -6,19 +6,18 @@ import { BottomNav } from '@/components/nav/BottomNav';
  * desenfoque y con el botón central elevado, y nada de eso sale de las
  * opciones de `Tabs`.
  *
- * `tabBarStyle: { position: 'absolute' }` no es decorativo. Sin eso el
- * navegador le reserva alto a la barra al final de cada pantalla, y como la
- * barra ahora flota por encima, ese hueco quedaría como una franja negra
- * vacía. Cada pantalla deja su propio espacio abajo con `useBottomNavInset`.
+ * La barra ocupa su lugar en el layout, como cualquier barra de pestañas: el
+ * navegador le reserva el alto al final de cada pantalla y el contenido
+ * termina justo arriba. Estuvo un tiempo en `position: 'absolute'`, de
+ * cuando flotaba por encima del contenido, y al volverla una barra común eso
+ * la sacaba de su lugar y la dejaba invisible: quedaba una franja vacía
+ * abajo y no se podía navegar a ningún lado.
  */
 export default function TabsLayout() {
   return (
     <Tabs
       tabBar={(props) => <BottomNav {...props} />}
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: { position: 'absolute' },
-      }}
+      screenOptions={{ headerShown: false }}
     >
       <Tabs.Screen name="discover" options={{ title: 'Inicio' }} />
       <Tabs.Screen name="map" options={{ title: 'Mapa' }} />

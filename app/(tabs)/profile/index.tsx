@@ -2,7 +2,6 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
-import { useBottomNavInset } from '@/components/nav/BottomNav';
 import { Avatar } from '@/components/ui/Avatar';
 import { Badge } from '@/components/ui/Badge';
 import { colors, radii, spacing, typography } from '@/constants/theme';
@@ -25,13 +24,12 @@ export default function ProfileScreen() {
   const profile = useAuthStore((s) => s.profile);
   // Antes del early return: los hooks tienen que correr siempre en el mismo
   // orden, y un `return` en el medio cambiaría cuántos se ejecutan.
-  const navInset = useBottomNavInset();
 
   if (!profile) return null;
 
   return (
     <Screen edges={['top']} padded>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: navInset }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: spacing.xl }}>
         <View style={styles.header}>
           <Avatar uri={profile.avatarUrl} name={profile.displayName} size={72} />
           <View style={{ flex: 1 }}>

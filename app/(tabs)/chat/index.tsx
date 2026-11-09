@@ -2,7 +2,6 @@ import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
-import { useBottomNavInset } from '@/components/nav/BottomNav';
 import { Avatar } from '@/components/ui/Avatar';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
@@ -14,7 +13,6 @@ import { Conversation } from '@/types/models';
 export default function ChatListScreen() {
   const router = useRouter();
   const { data, isLoading } = useConversations();
-  const navInset = useBottomNavInset();
 
   return (
     <Screen edges={['top']} padded>
@@ -32,9 +30,7 @@ export default function ChatListScreen() {
         <FlatList
           data={data}
           keyExtractor={(c) => c.id}
-          // La barra de pestañas flota sobre el contenido: sin este espacio
-          // la última conversación queda tapada.
-          contentContainerStyle={{ paddingBottom: navInset }}
+          contentContainerStyle={{ paddingBottom: spacing.xl }}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           renderItem={({ item }) => <ConversationRow conversation={item} onPress={() => router.push(`/chat/${item.id}`)} />}
         />

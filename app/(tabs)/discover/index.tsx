@@ -5,14 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Avatar } from '@/components/ui/Avatar';
 import { Chip, ChipRow } from '@/components/ui/Chip';
-import { HeroAction, HeroCard } from '@/components/ui/HeroCard';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EventCard } from '@/components/event/EventCard';
 import { EventCardSkeleton } from '@/components/event/EventCardSkeleton';
 import { LocationSheet } from '@/components/LocationSheet';
-import { useBottomNavInset } from '@/components/nav/BottomNav';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useAuthStore } from '@/stores/authStore';
 import { useLocationStore } from '@/stores/locationStore';
@@ -31,7 +29,6 @@ export default function DiscoverScreen() {
 
   const { categories } = useCategories();
   const { columns, gutter } = useResponsive();
-  const navInset = useBottomNavInset();
 
   const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm, categorySlug });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
@@ -47,11 +44,6 @@ export default function DiscoverScreen() {
       </Screen>
     );
   }
-
-  // El número de la card grande sale de lo que ya trajo el feed, así que
-  // mientras carga no se muestra un cero: un cero y "todavía no cargó" se
-  // ven igual pero significan cosas muy distintas.
-  const nearbyCount = feed.isLoading ? '—' : events.length;
 
   const header = (
     <View style={styles.header}>
@@ -100,19 +92,6 @@ export default function DiscoverScreen() {
           Buscar fiestas, zonas, organizadores…
         </Text>
       </Pressable>
-
-      <View style={{ marginHorizontal: gutter }}>
-        <HeroCard
-          title="Esta noche cerca tuyo"
-          value={nearbyCount}
-          subtitle={`A menos de ${radiusKm} km de ${origin.label}`}
-        >
-          <HeroAction icon="map" label="Mapa" onPress={() => router.push('/(tabs)/map')} />
-          <HeroAction icon="musical-notes" label="Boliches" onPress={() => router.push('/boliches')} />
-          <HeroAction icon="flame" label="Tendencias" onPress={() => router.push('/trending')} />
-          <HeroAction icon="add-circle" label="Crear" onPress={() => router.push('/(tabs)/publish')} />
-        </HeroCard>
-      </View>
 
       <ChipRow>
         {categories.map((category) => (
@@ -183,7 +162,7 @@ export default function DiscoverScreen() {
           { paddingHorizontal: columns > 1 || events.length > 0 ? gutter : 0 },
           // La barra inferior flota por encima del contenido: sin este
           // espacio, la última tarjeta queda tapada y no se puede tocar.
-          { paddingBottom: navInset + spacing.lg },
+          { paddingBottom: spacing.xl },
         ]}
         refreshControl={
           <RefreshControl

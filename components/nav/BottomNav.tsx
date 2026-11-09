@@ -109,7 +109,7 @@ export function GlobalNavBar() {
   const insets = useSafeAreaInsets();
 
   return (
-    <Bar paddingBottom={insets.bottom}>
+    <Bar floating paddingBottom={insets.bottom}>
       {TAB_ORDER.map((key) => {
         const meta = TABS[key];
         return (
@@ -128,9 +128,26 @@ export function GlobalNavBar() {
   );
 }
 
-function Bar({ children, paddingBottom }: { children: React.ReactNode; paddingBottom: number }) {
+function Bar({
+  children,
+  paddingBottom,
+  floating,
+}: {
+  children: React.ReactNode;
+  paddingBottom: number;
+  /**
+   * Solo para `GlobalNavBar`, que se monta encima de una pantalla cualquiera
+   * y necesita anclarse al borde.
+   *
+   * `BottomNav` va sin esto: el navegador de pestañas le reserva su lugar
+   * abajo, y ponerla en absoluto la sacaba de ese lugar y la dejaba
+   * invisible, con una franja vacía donde tenía que estar la barra. Era un
+   * resto de cuando la barra flotaba por encima del contenido.
+   */
+  floating?: boolean;
+}) {
   return (
-    <View style={[styles.root, { paddingBottom }]}>
+    <View style={[styles.root, floating && styles.floating, { paddingBottom }]}>
       <View style={styles.row}>{children}</View>
     </View>
   );
@@ -194,16 +211,13 @@ export function useBottomNavInset() {
 
 const styles = StyleSheet.create({
   root: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
     backgroundColor: colors.surface,
     // Una línea fina, no una sombra. Sobre fondo oscuro la sombra no se ve y
     // lo único que hace falta es separar la barra del contenido.
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.border,
   },
+  floating: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   row: {
     flexDirection: 'row',
     height: CONTENT_HEIGHT,
