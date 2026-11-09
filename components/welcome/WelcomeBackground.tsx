@@ -40,6 +40,73 @@ import { useReducedMotion } from '@/hooks/useReducedMotion';
 const SKY = ['#040D1A', '#0A2540', '#12486B', '#1C6E8C', '#E8743B', '#F2A03D'] as const;
 const SEA = ['#F2A03D', '#1E6B8F', '#0C3A5A', '#061E30'] as const;
 
+/**
+ * Las olas. `at` es a qué altura del mar va cada una (0 = horizonte, 1 =
+ * borde inferior), `w` cuánto ocupa del ancho y `o` su opacidad.
+ *
+ * Las de arriba son finitas, anchas y tenues; las de abajo más gruesas y
+ * marcadas. Esa progresión es la que da sensación de profundidad: sin ella
+ * se ven como rayas pegadas sobre un degradado.
+ */
+const WAVES = [
+  { at: 0.06, w: 0.9, o: 0.16 },
+  { at: 0.17, w: 0.78, o: 0.2 },
+  { at: 0.3, w: 0.95, o: 0.14 },
+  { at: 0.45, w: 0.7, o: 0.18 },
+];
+
+/**
+ * Una franja de agua que se desplaza de un lado al otro, muy despacio.
+ *
+ * Cada una arranca con un retraso distinto para que no se muevan todas
+ * juntas, que es lo que delataría que son cuatro rectángulos y no agua.
+ */
+function WaveLine({
+  top,
+  widthFactor,
+  opacity,
+  index,
+  reducedMotion,
+}: {
+  top: number;
+  widthFactor: number;
+  opacity: number;
+  index: number;
+  reducedMotion: boolean;
+}) {
+  const drift = useSharedValue(0);
+
+  useEffect(() => {
+    if (reducedMotion) return;
+    drift.value = withDelay(
+      index * 700,
+      withRepeat(withTiming(1, { duration: 7000 + index * 1400, easing: Easing.inOut(Easing.sin) }), -1, true)
+    );
+  }, [drift, index, reducedMotion]);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [{ translateX: -14 + drift.value * 28 }],
+    opacity: opacity * (0.75 + drift.value * 0.35),
+  }));
+
+  return (
+    <Animated.View
+      style={[
+        styles.wave,
+        { top, width: `${widthFactor * 100}%`, left: `${((1 - widthFactor) / 2) * 100}%`, height: 2 + index * 1.2 },
+        style,
+      ]}
+    >
+      <LinearGradient
+        colors={['rgba(255,255,255,0)', 'rgba(190,235,255,0.9)', 'rgba(255,255,255,0)']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={styles.waveFill}
+      />
+    </Animated.View>
+  );
+}
+
 /** Una fronda de palmera: el tallo y las hojas colgando a los lados. */
 function PalmFrond({ flip }: { flip?: boolean }) {
   return (
@@ -148,6 +215,13 @@ export function WelcomeBackground() {
       {/* Mar */}
       <LinearGradient colors={SEA} locations={[0, 0.12, 0.5, 1]} style={[styles.sea, { top: horizon }]} />
 
+      {/* Olas: cuatro franjas claras que se van ensanchando hacia abajo, como
+          la perspectiva real del agua, y se desplazan despacio. Es lo que
+          separa un degradado plano de algo que parece mar. */}
+      {WAVES.map((w, i) => (
+        <WaveLine key={i} top={horizon + (height - horizon) * w.at} widthFactor={w.w} opacity={w.o} index={i} reducedMotion={reducedMotion} />
+      ))}
+
       {/* Reflejo del sol sobre el agua: una columna que se desvanece hacia
           abajo. También por capas, por el mismo motivo que el sol. */}
       <Animated.View style={[styles.reflection, { top: horizon, left: width / 2 - sunSize * 0.22, width: sunSize * 0.44 }, shimmerStyle]}>
@@ -189,6 +263,8 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   reflection: { position: 'absolute' },
+  wave: { position: 'absolute', borderRadius: 4, overflow: 'hidden' },
+  waveFill: { flex: 1 },
   // Las frondas nacen apenas fuera de la pantalla, como en el logo: así el
   // tronco no se ve y la hoja parece entrar desde afuera del encuadre.
   palm: { position: 'absolute', top: -30, opacity: 0.98 },
