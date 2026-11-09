@@ -1,7 +1,6 @@
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { accentGradient, colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, spacing, typography } from '@/constants/theme';
 import { PressableScale } from './PressableScale';
 
 type Props = {
@@ -12,32 +11,39 @@ type Props = {
 };
 
 /**
- * La card grande de arriba del Inicio: fondo en degradé cian, texto oscuro,
- * un número grande y hasta cuatro accesos.
+ * Resumen de lo que hay cerca, con los accesos directos debajo.
  *
- * Es el único lugar de la app donde el acento ocupa una superficie grande.
- * Funciona porque hay exactamente uno por pantalla; si se repitiera, el
- * degradé dejaría de significar "esto es lo importante" y la pantalla se
- * volvería ruido cian.
+ * Estuvo como una card a sangre con degradé cian y el número a 32pt. Se
+ * cambió a propósito: un bloque de color saturado con una cifra enorme es la
+ * imagen de un panel de control, no la de una app de salidas, y es de las
+ * primeras cosas que hacen que algo se lea como generado y no como diseñado.
+ *
+ * Ahora el peso lo lleva la tipografía y no el color. El acento aparece solo
+ * en el número y en los íconos —que es donde señala algo— y la superficie es
+ * la misma gris que el resto de la app.
  */
 export function HeroCard({ title, value, subtitle, children }: Props) {
   return (
-    <LinearGradient
-      colors={[...accentGradient]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.root}
-    >
-      {/* Mancha clara en la esquina. Le saca al degradé el aspecto de relleno
-          plano y da la sensación de una luz fuera de cuadro. */}
-      <View style={styles.bloom} pointerEvents="none" />
+    <View style={styles.root}>
+      <View style={styles.summary}>
+        <Text style={styles.count}>{value}</Text>
+        <View style={styles.summaryText}>
+          <Text style={styles.title}>{title}</Text>
+          {subtitle ? (
+            <Text style={styles.subtitle} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </View>
 
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.value}>{value}</Text>
-      {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-
-      {children ? <View style={styles.actions}>{children}</View> : null}
-    </LinearGradient>
+      {children ? (
+        <>
+          <View style={styles.divider} />
+          <View style={styles.actions}>{children}</View>
+        </>
+      ) : null}
+    </View>
   );
 }
 
@@ -47,19 +53,17 @@ type ActionProps = {
   onPress: () => void;
 };
 
-/** Acceso de la HeroCard: cuadrado oscuro redondeado con el ícono en cian. */
+/** Acceso directo: ícono y etiqueta, sin recuadro de fondo. */
 export function HeroAction({ icon, label, onPress }: ActionProps) {
   return (
     <PressableScale
       style={styles.action}
-      scaleTo={0.93}
+      scaleTo={0.94}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <View style={styles.actionIcon}>
-        <Ionicons name={icon} size={21} color={colors.accent} />
-      </View>
+      <Ionicons name={icon} size={22} color={colors.accent} />
       <Text style={styles.actionLabel} numberOfLines={1}>
         {label}
       </Text>
@@ -69,64 +73,55 @@ export function HeroAction({ icon, label, onPress }: ActionProps) {
 
 const styles = StyleSheet.create({
   root: {
-    borderRadius: radii.xl,
-    padding: spacing.lg,
-    overflow: 'hidden',
-    // El cian sólido debajo del degradé. Todo lo que va adentro de esta card
-    // está pensado como "oscuro sobre cian": el titular, el número y las
-    // etiquetas de los accesos son casi negros. Si el degradé no llega a
-    // pintar, el fondo queda transparente, ese texto oscuro cae sobre el
-    // fondo oscuro de la app y la card entera se vuelve ilegible —se ve
-    // gris, como si los botones estuvieran desactivados.
-    backgroundColor: colors.accent,
-    ...shadows.card,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingVertical: spacing.md,
   },
-  bloom: {
-    position: 'absolute',
-    top: -56,
-    right: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+  summary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
-  title: {
-    color: colors.accentText,
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold,
-    opacity: 0.75,
-  },
-  value: {
-    color: colors.accentText,
-    fontSize: typography.size.display,
+  count: {
+    color: colors.accent,
+    fontSize: 30,
     fontWeight: typography.weight.bold,
+    // Sin esto, el número cambia de ancho según los dígitos y el texto de al
+    // lado se corre solo cada vez que se actualiza el feed.
     fontVariant: ['tabular-nums'],
-    marginTop: 2,
+  },
+  summaryText: { flex: 1, minWidth: 0 },
+  title: {
+    color: colors.textPrimary,
+    fontSize: typography.size.md,
+    fontWeight: typography.weight.semibold,
   },
   subtitle: {
-    color: colors.accentText,
+    color: colors.textMuted,
     fontSize: typography.size.sm,
-    opacity: 0.7,
-    marginTop: 2,
+    marginTop: 1,
   },
-  actions: {
-    flexDirection: 'row',
-    marginTop: spacing.lg,
-    gap: spacing.xs,
+  divider: {
+    height: 1,
+    backgroundColor: colors.border,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
   },
-  action: { flex: 1, alignItems: 'center', gap: 6 },
-  actionIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radii.sm,
-    backgroundColor: colors.accentText,
+  actions: { flexDirection: 'row' },
+  action: {
+    flex: 1,
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 5,
+    paddingTop: spacing.xs,
+    paddingBottom: 2,
   },
   actionLabel: {
-    color: colors.accentText,
+    color: colors.textSecondary,
     fontSize: typography.size.xs,
-    fontWeight: typography.weight.semibold,
+    fontWeight: typography.weight.medium,
     textAlign: 'center',
   },
 });

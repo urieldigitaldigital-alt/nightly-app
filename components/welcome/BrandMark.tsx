@@ -56,17 +56,18 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(4,14,22,0.82)',
-    borderWidth: 1.5,
-    borderColor: 'rgba(127,233,255,0.55)',
-    // El resplandor cian del logo. En Android `elevation` no tiñe la sombra,
-    // así que ahí se pierde: el borde de arriba es lo que mantiene la marca
-    // reconocible en las dos plataformas.
-    shadowColor: '#22D3EE',
-    shadowOpacity: 0.32,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 6,
+    backgroundColor: 'rgba(8,14,20,0.82)',
+    // Sin aro cian ni resplandor de color. El logo ya trae su propio brillo
+    // dibujado adentro; rodearlo de más luz lo empujaba a parecer un botón
+    // encendido. Una sombra negra común lo despega de la foto, que es todo
+    // lo que hace falta.
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    shadowColor: '#000000',
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   logo: { width: '100%', height: '100%' },
 });

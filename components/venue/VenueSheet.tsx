@@ -1,7 +1,6 @@
 import { Linking, Platform, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { accentGradient, colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, shadows, spacing, typography } from '@/constants/theme';
 import { formatDistance } from '@/lib/format';
 import { instagramUrl } from '@/lib/instagram';
 import { Venue } from '@/types/models';
@@ -87,15 +86,10 @@ export function VenueSheet({ venue, onClose }: Props) {
             accessibilityRole="link"
             accessibilityLabel={`Abrir el Instagram de ${venue.name}`}
           >
-            <LinearGradient
-              colors={[...accentGradient]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.primaryFill}
-            >
+            <View style={styles.primaryFill}>
               <Ionicons name="logo-instagram" size={18} color={colors.accentText} />
               <Text style={styles.primaryLabel}>Instagram</Text>
-            </LinearGradient>
+            </View>
           </PressableScale>
         ) : (
           // Se muestra deshabilitado en vez de ocultarlo: así la fila de
@@ -171,6 +165,7 @@ const styles = StyleSheet.create({
   primaryAction: { flex: 1, height: 48, borderRadius: radii.pill },
   primaryFill: {
     flex: 1,
+    backgroundColor: colors.accent,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

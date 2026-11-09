@@ -73,44 +73,37 @@ export const spacing = {
   xxxl: 40,
 } as const;
 
-// Más redondeado que antes en toda la escala. Es lo que separa visualmente a
-// una app nativa reciente de una de hace cinco años, y lo que hace que las
-// cards lean como objetos y no como recuadros.
+// Radios moderados. Estuvieron en 12/18/24/32 y era demasiado: con todo muy
+// redondeado las cards dejan de leerse como contenido y empiezan a leerse
+// como globos. Estos valores están cerca de los que usa el propio sistema en
+// iOS, que es la referencia correcta para una app que quiere pasar por
+// nativa.
 export const radii = {
-  sm: 12,
-  md: 18,
-  lg: 24,
-  xl: 32,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  xl: 22,
   pill: 999,
 } as const;
 
 /**
- * Sombra de card. En iOS tiñe de negro profundo; en Android `elevation` no
- * acepta color, así que ahí la sombra la da el sistema y estas props se
- * ignoran solas.
+ * Sombra de card, contenida.
+ *
+ * Sobre un fondo oscuro una sombra negra casi no se ve: lo que separa una
+ * superficie de otra es el cambio de color, no la sombra. Queda suave y solo
+ * para lo que de verdad flota por encima del contenido.
+ *
+ * Ya no hay sombra de resplandor. El cian se distingue por ser el único
+ * color saturado de la pantalla, no por brillar; los halos de colores
+ * alrededor de los botones son lo primero que delata a una app que no
+ * diseñó nadie.
  */
 export const shadows = {
   card: {
     shadowColor: '#000000',
-    shadowOpacity: 0.45,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
-  },
-  /**
-   * Resplandor cian, apenas insinuado.
-   *
-   * Estuvo en 0.45 de opacidad y 20 de radio, y era demasiado: con el botón
-   * principal, los chips activos y el botón del medio de la barra brillando
-   * todos a la vez, la pantalla se leía como un tablero de neón y el cian
-   * dejaba de señalar nada porque estaba en todos lados. Ahora el acento se
-   * distingue por ser el único color saturado sobre gris, no por brillar.
-   */
-  glow: {
-    shadowColor: palette.accent,
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.28,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 4,
   },
 } as const;

@@ -1,8 +1,7 @@
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { accentGradient, colors, radii, shadows, spacing, typography } from '@/constants/theme';
+import { colors, radii, spacing, typography } from '@/constants/theme';
 import { motion } from '@/constants/motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
@@ -82,20 +81,6 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
-      {/* El degradé va como capa de fondo y no como `backgroundColor` del
-          propio botón. Si se envolviera el botón en el degradé habría que
-          recortar con `overflow: 'hidden'`, y en iOS eso recorta también la
-          sombra, que es justo el resplandor que se busca acá. */}
-      {variant === 'primary' && !isDisabled ? (
-        <LinearGradient
-          colors={[...accentGradient]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradient}
-          pointerEvents="none"
-        />
-      ) : null}
-
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? colors.accentText : colors.textPrimary} />
       ) : (
@@ -130,14 +115,6 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
   },
-  gradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: radii.pill,
-  },
 });
 
 const sizeStyles = StyleSheet.create({
@@ -154,15 +131,18 @@ const variantStyles = StyleSheet.create({
   // bienvenida estos botones van encima del atardecer, y un bloque opaco
   // taparía la foto. Dentro de la app, sobre fondo negro, el resultado es
   // prácticamente el mismo gris de antes.
+  // Bordes blancos translúcidos, no cian. Sobre la foto de la bienvenida, un
+  // contorno de color en cada botón se leía como neón; en blanco al 30% los
+  // botones se apoyan sobre la imagen sin disputarle la atención al logo.
   secondary: {
-    backgroundColor: 'rgba(10,22,32,0.55)',
+    backgroundColor: 'rgba(10,16,22,0.55)',
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.45)',
+    borderColor: 'rgba(255,255,255,0.30)',
   },
   outline: {
-    backgroundColor: 'rgba(10,22,32,0.35)',
+    backgroundColor: 'rgba(10,16,22,0.35)',
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.45)',
+    borderColor: 'rgba(255,255,255,0.26)',
   },
   ghost: { backgroundColor: 'transparent' },
   danger: { backgroundColor: colors.danger },
