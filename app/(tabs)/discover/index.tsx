@@ -3,6 +3,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
+import { useBottomNavInset } from '@/components/nav/BottomNav';
 import { Avatar } from '@/components/ui/Avatar';
 import { Chip, ChipRow } from '@/components/ui/Chip';
 import { SectionHeader } from '@/components/ui/SectionHeader';
@@ -30,6 +31,7 @@ export default function DiscoverScreen() {
   const { categories } = useCategories();
   const { columns, gutter } = useResponsive();
 
+  const navInset = useBottomNavInset();
   const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm, categorySlug });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
 
@@ -162,7 +164,7 @@ export default function DiscoverScreen() {
           { paddingHorizontal: columns > 1 || events.length > 0 ? gutter : 0 },
           // La barra inferior flota por encima del contenido: sin este
           // espacio, la última tarjeta queda tapada y no se puede tocar.
-          { paddingBottom: spacing.xl },
+          { paddingBottom: navInset },
         ]}
         refreshControl={
           <RefreshControl

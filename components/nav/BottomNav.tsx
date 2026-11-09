@@ -9,7 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import Animated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colors, spacing, typography } from '@/constants/theme';
+import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 import { PressableScale } from '@/components/ui/PressableScale';
 
@@ -72,9 +72,14 @@ function vibrateTap() {
 /** La barra del navegador de pestañas. */
 export function BottomNav({ state, navigateToTab, insets }: BottomTabBarProps) {
   return (
-    <Bar paddingBottom={insets.bottom}>
+    <Bar floating paddingBottom={insets.bottom}>
       {state.routes.map((route, index) => {
-        const meta = TABS[route.name];
+        // Solo el primer tramo del nombre. Las pestañas son carpetas con un
+        // `index.tsx` adentro, así que Expo Router las nombra
+        // "discover/index", no "discover". Buscar por el nombre completo
+        // devolvía undefined para las cinco y la barra se dibujaba vacía:
+        // se veía el fondo pero ningún ícono, y no se podía navegar.
+        const meta = TABS[route.name.split('/')[0]];
         if (!meta) return null;
         return (
           <Tab
@@ -147,7 +152,7 @@ function Bar({
   floating?: boolean;
 }) {
   return (
-    <View style={[styles.root, floating && styles.floating, { paddingBottom }]}>
+    <View style={[styles.root, floating && styles.floating, { marginBottom: paddingBottom + spacing.xs }]}>
       <View style={styles.row}>{children}</View>
     </View>
   );
@@ -206,16 +211,21 @@ function Tab({ meta, focused, onPress }: { meta: TabMeta; focused: boolean; onPr
  */
 export function useBottomNavInset() {
   const insets = useSafeAreaInsets();
-  return CONTENT_HEIGHT + insets.bottom;
+  // El alto visible, más el margen de abajo y el recorte del sistema.
+  return CONTENT_HEIGHT + insets.bottom + spacing.xs * 2;
 }
 
 const styles = StyleSheet.create({
   root: {
     backgroundColor: colors.surface,
-    // Una línea fina, no una sombra. Sobre fondo oscuro la sombra no se ve y
-    // lo único que hace falta es separar la barra del contenido.
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    // Flotante: separada de los bordes y con esquinas redondeadas, para que
+    // el contenido se vea pasar por debajo en vez de quedar cortado contra
+    // una barra pegada al borde.
+    marginHorizontal: spacing.sm,
+    borderRadius: radii.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    overflow: 'hidden',
   },
   floating: { position: 'absolute', left: 0, right: 0, bottom: 0 },
   row: {
