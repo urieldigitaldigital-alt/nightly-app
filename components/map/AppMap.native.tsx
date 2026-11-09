@@ -45,6 +45,37 @@ function PhotoMarker({ marker }: { marker: Extract<MapMarkerSpec, { kind: 'photo
   );
 }
 
+/**
+ * Marcador de un boliche: el logo en un círculo con aro cian y una punta
+ * debajo.
+ *
+ * La punta importa. Un círculo solo queda centrado sobre la coordenada y a
+ * nivel de calle no se sabe a qué esquina corresponde; con la punta y el
+ * anclaje abajo, el vértice cae exactamente en el lugar.
+ */
+function VenueMarker({ marker }: { marker: Extract<MapMarkerSpec, { kind: 'venue' }> }) {
+  const size = marker.selected ? 56 : 44;
+
+  return (
+    <View style={styles.venueWrap}>
+      <View
+        style={[
+          styles.venueBubble,
+          { width: size, height: size, borderRadius: size / 2 },
+          marker.selected && styles.venueBubbleSelected,
+        ]}
+      >
+        {marker.logoUrl ? (
+          <Image source={{ uri: marker.logoUrl }} style={styles.venueImage} contentFit="cover" />
+        ) : (
+          <Text style={styles.venueInitial}>{marker.name.trim().charAt(0).toUpperCase()}</Text>
+        )}
+      </View>
+      <View style={styles.venueTip} />
+    </View>
+  );
+}
+
 export default function AppMapNative({
   style,
   center,
@@ -153,28 +184,81 @@ export default function AppMapNative({
         </GeoJSONSource>
       )}
 
-      {markers.map((marker) =>
-        marker.kind === 'photo' ? (
-          <Marker
-            key={marker.id}
-            id={marker.id}
-            lngLat={[marker.lng, marker.lat]}
-            anchor="bottom"
-            onPress={() => onMarkerPress?.(marker.id)}
-          >
-            <PhotoMarker marker={marker} />
-          </Marker>
-        ) : (
+      {markers.map((marker) => {
+        if (marker.kind === 'photo') {
+          return (
+            <Marker
+              key={marker.id}
+              id={marker.id}
+              lngLat={[marker.lng, marker.lat]}
+              anchor="bottom"
+              onPress={() => onMarkerPress?.(marker.id)}
+            >
+              <PhotoMarker marker={marker} />
+            </Marker>
+          );
+        }
+        if (marker.kind === 'venue') {
+          return (
+            <Marker
+              key={marker.id}
+              id={marker.id}
+              lngLat={[marker.lng, marker.lat]}
+              anchor="bottom"
+              onPress={() => onMarkerPress?.(marker.id)}
+            >
+              <VenueMarker marker={marker} />
+            </Marker>
+          );
+        }
+        return (
           <Marker key={marker.id} id={marker.id} lngLat={[marker.lng, marker.lat]} onPress={() => onMarkerPress?.(marker.id)}>
             <View style={[styles.dot, { backgroundColor: marker.color ?? colors.accent }]} />
           </Marker>
-        )
-      )}
+        );
+      })}
     </Map>
   );
 }
 
 const styles = StyleSheet.create({
+  venueWrap: { alignItems: 'center' },
+  venueBubble: {
+    backgroundColor: '#0B1015',
+    borderWidth: 2.5,
+    borderColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6,
+  },
+  venueBubbleSelected: {
+    borderWidth: 3,
+    // El resplandor solo en el elegido: en un mapa con diez boliches, si
+    // todos brillan no se distingue cuál está abierto en la ficha.
+    shadowColor: colors.accent,
+    shadowOpacity: 0.9,
+    shadowRadius: 14,
+    elevation: 12,
+  },
+  venueImage: { width: '100%', height: '100%' },
+  venueInitial: {
+    color: colors.accent,
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  venueTip: {
+    width: 9,
+    height: 9,
+    marginTop: -5,
+    transform: [{ rotate: '45deg' }],
+    backgroundColor: colors.accent,
+    borderRadius: 2,
+  },
   photoMarker: {
     width: 48,
     height: 48,

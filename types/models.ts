@@ -133,3 +133,25 @@ export type AppNotification = {
   createdAt: string;
   data: Record<string, unknown>;
 };
+
+/**
+ * Un boliche del directorio.
+ *
+ * A diferencia de un evento, existe aunque esta noche no haya nada
+ * publicado: es el lugar, no la fiesta.
+ */
+export type Venue = {
+  id: string;
+  name: string;
+  slug: string;
+  lat: number;
+  lng: number;
+  logoUrl: string | null;
+  /** Solo el usuario, sin arroba ni URL. `null` si no se cargó. */
+  instagram: string | null;
+  address: string | null;
+  city: string;
+  description: string | null;
+  /** Lo calcula Postgres contra el origen que se le pase. */
+  distanceMeters: number | null;
+};

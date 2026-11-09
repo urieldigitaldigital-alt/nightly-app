@@ -32,18 +32,60 @@ function loadMaplibre(): Promise<any> {
   return maplibrePromise;
 }
 
+/**
+ * Escapes para armar el HTML de los marcadores.
+ *
+ * Acá se construye `innerHTML` con texto que viene de la base —el nombre de
+ * un boliche, la URL de una foto—, así que una comilla suelta en un nombre
+ * rompe el atributo y cierra la etiqueta antes de tiempo. Esto solo corre en
+ * web; en nativo los marcadores son componentes y el problema no existe.
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/** Igual que `escapeHtml`, pero además descarta las URL que no son http(s):
+ *  un `javascript:` en un `src` se ejecuta al cargarse. */
+function escapeAttr(value: string): string {
+  if (!/^https?:\/\//i.test(value)) return '';
+  return escapeHtml(value);
+}
+
 function makeEl(m: MapMarkerSpec): HTMLDivElement {
   const el = document.createElement('div');
   if (m.kind === 'photo') {
     el.innerHTML = `<div style="width:48px;height:48px;border-radius:24px;background:#fff;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.5);overflow:hidden;display:flex;align-items:center;justify-content:center;position:relative;">${
       m.photoUrl
-        ? `<img src="${m.photoUrl}" style="width:100%;height:100%;object-fit:cover;border-radius:21px;" />`
+        ? `<img src="${escapeAttr(m.photoUrl)}" style="width:100%;height:100%;object-fit:cover;border-radius:21px;" />`
         : `<div style="width:100%;height:100%;background:#2a2a2a;border-radius:21px;"></div>`
     }${
       m.badge && m.badge > 1
         ? `<div style="position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#22D3EE;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;padding:0 4px;color:#111;">${m.badge}</div>`
         : ''
     }</div>`;
+  } else if (m.kind === 'venue') {
+    // Mismo dibujo que `VenueMarker` en la versión nativa: círculo con aro
+    // cian, logo adentro y punta abajo apuntando al lugar exacto.
+    const size = m.selected ? 56 : 44;
+    const glow = m.selected
+      ? '0 0 0 6px rgba(34,211,238,0.22), 0 0 22px rgba(34,211,238,0.75)'
+      : '0 4px 10px rgba(0,0,0,0.6)';
+    const inner = m.logoUrl
+      ? `<img src="${escapeAttr(m.logoUrl)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" />`
+      : `<span style="color:#22D3EE;font:700 17px system-ui,sans-serif;">${escapeHtml(
+          m.name.trim().charAt(0).toUpperCase()
+        )}</span>`;
+    el.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;">
+        <div style="width:${size}px;height:${size}px;border-radius:50%;background:#0B1015;border:${
+          m.selected ? 3 : 2.5
+        }px solid #22D3EE;box-shadow:${glow};overflow:hidden;display:flex;align-items:center;justify-content:center;">${inner}</div>
+        <div style="width:9px;height:9px;margin-top:-5px;transform:rotate(45deg);background:#22D3EE;border-radius:2px;"></div>
+      </div>`;
   } else {
     el.innerHTML = `<div style="width:16px;height:16px;border-radius:8px;background:${m.color || '#22D3EE'};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.6);"></div>`;
   }
@@ -186,7 +228,9 @@ export default function AppMapWeb({
         });
         const marker = new maplibregl.Marker({
           element: el,
-          anchor: m.kind === 'photo' ? 'bottom' : 'center',
+          // Los que tienen punta se anclan abajo, para que el vértice caiga
+          // sobre la coordenada; el punto simple se centra en ella.
+          anchor: m.kind === 'photo' || m.kind === 'venue' ? 'bottom' : 'center',
         })
           .setLngLat([m.lng, m.lat])
           .addTo(map);

@@ -4,7 +4,25 @@ export type LatLng = { lat: number; lng: number };
 
 export type MapMarkerSpec =
   | { id: string; kind: 'photo'; lat: number; lng: number; photoUrl?: string | null; badge?: number }
-  | { id: string; kind: 'dot'; lat: number; lng: number; color?: string };
+  | { id: string; kind: 'dot'; lat: number; lng: number; color?: string }
+  /**
+   * Boliche del directorio: el logo en un círculo con aro cian y una punta
+   * abajo que marca el lugar exacto.
+   *
+   * Es un tipo aparte y no un `photo` con otro color porque se comporta
+   * distinto: crece cuando está elegido, lleva el nombre como respaldo si el
+   * logo no carga, y tiene que verse como un lugar permanente y no como una
+   * fiesta de esta noche.
+   */
+  | {
+      id: string;
+      kind: 'venue';
+      lat: number;
+      lng: number;
+      name: string;
+      logoUrl?: string | null;
+      selected?: boolean;
+    };
 
 /**
  * Modo de seguimiento de la ubicación del usuario, igual que en una app de

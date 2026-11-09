@@ -5,19 +5,33 @@ import type { MapMarkerSpec } from '@/components/map/AppMap.types';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
-import { CategoryChip } from '@/components/ui/CategoryChip';
+import { Chip, ChipRow } from '@/components/ui/Chip';
 import { LoadingState } from '@/components/ui/LoadingState';
 import { EmptyState } from '@/components/ui/EmptyState';
+import { PressableScale } from '@/components/ui/PressableScale';
+import { VenueLogo } from '@/components/venue/VenueLogo';
+import { VenueSheet } from '@/components/venue/VenueSheet';
+import { useBottomNavInset } from '@/components/nav/BottomNav';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { useLocationStore } from '@/stores/locationStore';
 import { useCategories } from '@/hooks/useCategories';
 import { useEventsFeed } from '@/hooks/useEventsFeed';
+import { useVenues } from '@/hooks/useVenues';
 import { clusterEvents, MarkerCluster } from '@/lib/clustering';
 import { radiusKmToZoom } from '@/lib/mapZoom';
 import { formatDistance, formatEventDateTime } from '@/lib/format';
 import { isSupabaseConfigured } from '@/lib/supabase';
 
 const RADIUS_OPTIONS_KM = [10, 25, 50, 100];
+
+/** Qué se dibuja sobre el mapa. */
+const LAYERS = [
+  { key: 'todo', label: 'Todo' },
+  { key: 'fiestas', label: 'Fiestas' },
+  { key: 'boliches', label: 'Boliches' },
+] as const;
+
+type Layer = (typeof LAYERS)[number]['key'];
 
 export default function MapScreen() {
   const router = useRouter();
@@ -26,7 +40,9 @@ export default function MapScreen() {
   const setRadiusKm = useLocationStore((s) => s.setRadiusKm);
   const requestPermissionAndLocate = useLocationStore((s) => s.requestPermissionAndLocate);
   const [categorySlug, setCategorySlug] = useState('all');
+  const [layer, setLayer] = useState<Layer>('todo');
   const [selectedCluster, setSelectedCluster] = useState<MarkerCluster | null>(null);
+  const [selectedVenueId, setSelectedVenueId] = useState<string | null>(null);
   // Modo seguimiento: cuando está activo, el mapa se mantiene centrado en la
   // persona y rota con la brújula — el comportamiento de un GPS. Se apaga
   // solo apenas alguien arrastra el mapa, porque en ese momento la intención
@@ -35,6 +51,7 @@ export default function MapScreen() {
   const [locating, setLocating] = useState(false);
 
   const { categories } = useCategories();
+  const navInset = useBottomNavInset();
   const feed = useEventsFeed({ lat: origin.lat, lng: origin.lng, radiusKm, categorySlug, orderBy: 'distance' });
   const events = useMemo(() => feed.data?.pages.flat() ?? [], [feed.data]);
   const clusters = useMemo(() => clusterEvents(events), [events]);
@@ -43,17 +60,47 @@ export default function MapScreen() {
   // nativo con <UserLocation/>, que lo mueve en el hilo nativo y además
   // muestra el círculo de precisión real en vez de un punto que pretende
   // precisión infinita.
-  const markers = useMemo<MapMarkerSpec[]>(
-    () =>
-      clusters.map((cluster) => ({
-        id: cluster.key,
-        kind: 'photo',
-        lat: cluster.lat,
-        lng: cluster.lng,
-        photoUrl: cluster.events[0].coverImageUrl,
-        badge: cluster.events.length,
-      })),
-    [clusters]
+  const { venues } = useVenues({ lat: origin.lat, lng: origin.lng });
+
+  const showEvents = layer === 'todo' || layer === 'fiestas';
+  const showVenues = layer === 'todo' || layer === 'boliches';
+
+  const markers = useMemo<MapMarkerSpec[]>(() => {
+    const list: MapMarkerSpec[] = [];
+
+    if (showEvents) {
+      for (const cluster of clusters) {
+        list.push({
+          id: cluster.key,
+          kind: 'photo',
+          lat: cluster.lat,
+          lng: cluster.lng,
+          photoUrl: cluster.events[0].coverImageUrl,
+          badge: cluster.events.length,
+        });
+      }
+    }
+
+    if (showVenues) {
+      for (const venue of venues) {
+        list.push({
+          id: `venue:${venue.id}`,
+          kind: 'venue',
+          lat: venue.lat,
+          lng: venue.lng,
+          name: venue.name,
+          logoUrl: venue.logoUrl,
+          selected: selectedVenueId === venue.id,
+        });
+      }
+    }
+
+    return list;
+  }, [clusters, venues, showEvents, showVenues, selectedVenueId]);
+
+  const selectedVenue = useMemo(
+    () => venues.find((v) => v.id === selectedVenueId) ?? null,
+    [venues, selectedVenueId]
   );
 
   const handleLocatePress = async () => {
@@ -83,31 +130,53 @@ export default function MapScreen() {
 
   return (
     <Screen edges={['top']} style={styles.root}>
-      <View style={styles.categoryBar}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={categories}
-          keyExtractor={(c) => c.slug}
-          contentContainerStyle={{ gap: spacing.xs, paddingHorizontal: spacing.lg }}
-          renderItem={({ item }) => (
-            <CategoryChip label={item.label} active={categorySlug === item.slug} onPress={() => setCategorySlug(item.slug)} />
-          )}
-        />
+      <View style={styles.layerBar}>
+        <ChipRow>
+          {LAYERS.map((item) => (
+            <Chip
+              key={item.key}
+              label={item.label}
+              active={layer === item.key}
+              onPress={() => {
+                setLayer(item.key);
+                // Al cambiar de capa se cierran las fichas abiertas: si no,
+                // puede quedar la ficha de un boliche sobre un mapa donde
+                // los boliches ya no se dibujan.
+                setSelectedCluster(null);
+                setSelectedVenueId(null);
+              }}
+            />
+          ))}
+        </ChipRow>
       </View>
 
-      <View style={styles.radiusBar}>
-        <FlatList
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          data={RADIUS_OPTIONS_KM}
-          keyExtractor={(km) => String(km)}
-          contentContainerStyle={{ gap: spacing.xs, paddingHorizontal: spacing.lg }}
-          renderItem={({ item: km }) => (
-            <CategoryChip label={`${km} km`} active={radiusKm === km} onPress={() => setRadiusKm(km)} />
-          )}
-        />
-      </View>
+      {/* Las categorías y el radio son filtros de fiestas: con la capa de
+          boliches no filtran nada y ocuparían dos franjas de la pantalla
+          sin hacer nada. */}
+      {showEvents ? (
+        <>
+          <View style={styles.filterBar}>
+            <ChipRow>
+              {categories.map((item) => (
+                <Chip
+                  key={item.slug}
+                  label={item.label}
+                  active={categorySlug === item.slug}
+                  onPress={() => setCategorySlug(item.slug)}
+                />
+              ))}
+            </ChipRow>
+          </View>
+
+          <View style={styles.filterBar}>
+            <ChipRow>
+              {RADIUS_OPTIONS_KM.map((km) => (
+                <Chip key={km} label={`${km} km`} active={radiusKm === km} onPress={() => setRadiusKm(km)} />
+              ))}
+            </ChipRow>
+          </View>
+        </>
+      ) : null}
 
       <View style={styles.mapWrapper}>
         <AppMap
@@ -119,8 +188,16 @@ export default function MapScreen() {
           trackUser={following ? 'heading' : undefined}
           onUserPanStart={() => setFollowing(false)}
           onMarkerPress={(id) => {
+            if (id.startsWith('venue:')) {
+              setSelectedCluster(null);
+              setSelectedVenueId(id.slice('venue:'.length));
+              return;
+            }
             const cluster = clustersByKey.get(id);
-            if (cluster) setSelectedCluster(cluster);
+            if (cluster) {
+              setSelectedVenueId(null);
+              setSelectedCluster(cluster);
+            }
           }}
         />
 
@@ -152,10 +229,52 @@ export default function MapScreen() {
           <Ionicons name="list" size={16} color={colors.textPrimary} />
           <Text style={styles.listToggleText}>Ver como lista</Text>
         </Pressable>
+
+        {/* Carrusel de los boliches más cercanos. Solo aparece cuando no hay
+            nada elegido: es la forma de recorrer el directorio sin tener que
+            cazar marcadores chiquitos en el mapa. */}
+        {showVenues && !selectedVenue && !selectedCluster && venues.length > 0 ? (
+          <View style={[styles.nearbyStrip, { bottom: navInset + spacing.xs }]}>
+            <FlatList
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              data={venues.slice(0, 10)}
+              keyExtractor={(v) => v.id}
+              contentContainerStyle={styles.nearbyContent}
+              renderItem={({ item }) => (
+                <PressableScale
+                  style={styles.nearbyCard}
+                  scaleTo={0.97}
+                  onPress={() => setSelectedVenueId(item.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={item.name}
+                >
+                  <VenueLogo uri={item.logoUrl} name={item.name} size={40} />
+                  <View style={styles.nearbyText}>
+                    <Text style={styles.nearbyName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    {item.distanceMeters != null ? (
+                      <Text style={styles.nearbyDistance}>{formatDistance(item.distanceMeters)}</Text>
+                    ) : null}
+                  </View>
+                </PressableScale>
+              )}
+            />
+          </View>
+        ) : null}
+
+        {selectedVenue ? (
+          <View style={[styles.venueSheet, { bottom: navInset + spacing.xs }]}>
+            <VenueSheet venue={selectedVenue} onClose={() => setSelectedVenueId(null)} />
+          </View>
+        ) : null}
       </View>
 
       {selectedCluster && (
-        <View style={styles.sheet}>
+        // La barra flota por encima: sin este espacio, las tarjetas de
+        // fiestas quedan debajo y no se pueden tocar.
+        <View style={[styles.sheet, { paddingBottom: navInset }]}>
           <Pressable style={styles.sheetClose} onPress={() => setSelectedCluster(null)}>
             <Ionicons name="close" size={18} color={colors.textSecondary} />
           </Pressable>
@@ -187,8 +306,34 @@ export default function MapScreen() {
 
 const styles = StyleSheet.create({
   root: { gap: 0 },
-  categoryBar: { paddingVertical: spacing.sm },
-  radiusBar: { paddingBottom: spacing.sm },
+  layerBar: { paddingTop: spacing.sm, paddingBottom: spacing.xs },
+  filterBar: { paddingBottom: spacing.xs },
+  nearbyStrip: { position: 'absolute', left: 0, right: 0 },
+  nearbyContent: { gap: spacing.sm, paddingHorizontal: spacing.md },
+  nearbyCard: {
+    width: 210,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    padding: spacing.xs,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: 'rgba(11,16,21,0.92)',
+  },
+  nearbyText: { flex: 1, minWidth: 0 },
+  nearbyName: {
+    color: colors.textPrimary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold,
+  },
+  nearbyDistance: {
+    color: colors.accent,
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold,
+    marginTop: 1,
+  },
+  venueSheet: { position: 'absolute', left: spacing.sm, right: spacing.sm },
   mapWrapper: { flex: 1 },
   loadingOverlay: {
     position: 'absolute',
