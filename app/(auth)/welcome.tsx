@@ -5,6 +5,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { AppleSignInButton } from '@/components/ui/AppleSignInButton';
+import { WelcomeBackground } from '@/components/welcome/WelcomeBackground';
+import { BrandMark } from '@/components/welcome/BrandMark';
 import { brand } from '@/constants/brand';
 import { colors, radii, spacing, typography } from '@/constants/theme';
 import { signInWithApple, signInWithGoogle } from '@/services/auth';
@@ -85,9 +87,10 @@ export default function WelcomeScreen() {
 
   return (
     <Screen edges={['top', 'bottom']}>
-      <View style={styles.brandRow}>
-        <Text style={styles.brandDot}>●</Text>
-        <Text style={styles.brandName}>{brand.name}</Text>
+      <WelcomeBackground />
+
+      <View style={styles.brandHeader}>
+        <BrandMark />
       </View>
 
       <View style={styles.carouselFrame} onLayout={onFrameLayout}>
@@ -100,9 +103,6 @@ export default function WelcomeScreen() {
         >
           {SLIDES.map((slide) => (
             <View key={slide.title} style={[styles.slide, { width }]}>
-              <View style={styles.iconWrapper}>
-                <Ionicons name={slide.icon} size={52} color={colors.accent} />
-              </View>
               <Text style={styles.title}>{slide.title}</Text>
               <Text style={styles.body}>{slide.body}</Text>
             </View>
@@ -161,46 +161,32 @@ export default function WelcomeScreen() {
 
 const styles = StyleSheet.create({
   carouselFrame: { flex: 1 },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-  },
-  brandDot: { color: colors.accent, fontSize: 10 },
-  brandName: {
-    color: colors.textPrimary,
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.bold,
-    letterSpacing: 2,
-  },
+  brandHeader: { alignItems: 'center', paddingTop: spacing.lg, paddingBottom: spacing.xs },
   slide: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xxl,
     gap: spacing.md,
   },
-  iconWrapper: {
-    width: 96,
-    height: 96,
-    borderRadius: radii.xl,
-    backgroundColor: colors.surfaceAlt,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
-  },
   title: {
     color: colors.textPrimary,
     fontSize: typography.size.xxl,
     fontWeight: typography.weight.bold,
     textAlign: 'center',
+    // Sobre el fondo del atardecer el texto plano se pierde contra el naranja.
+    // La sombra lo despega sin tener que oscurecer la foto entera.
+    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowRadius: 12,
+    textShadowOffset: { width: 0, height: 2 },
   },
   body: {
-    color: colors.textSecondary,
+    color: '#D6E6EF',
     fontSize: typography.size.md,
     textAlign: 'center',
     lineHeight: 22,
+    textShadowColor: 'rgba(0,0,0,0.7)',
+    textShadowRadius: 10,
+    textShadowOffset: { width: 0, height: 1 },
   },
   dots: {
     flexDirection: 'row',

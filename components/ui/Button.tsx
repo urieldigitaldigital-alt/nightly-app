@@ -124,8 +124,20 @@ const sizeStyles = StyleSheet.create({
 
 const variantStyles = StyleSheet.create({
   primary: { backgroundColor: colors.accent },
-  secondary: { backgroundColor: colors.surfaceAlt },
-  outline: { backgroundColor: 'transparent', borderWidth: 1, borderColor: colors.border },
+  // Translúcido y con borde cian en vez de un gris sólido: en la pantalla de
+  // bienvenida estos botones van encima del atardecer, y un bloque opaco
+  // taparía la foto. Dentro de la app, sobre fondo negro, el resultado es
+  // prácticamente el mismo gris de antes.
+  secondary: {
+    backgroundColor: 'rgba(10,22,32,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.45)',
+  },
+  outline: {
+    backgroundColor: 'rgba(10,22,32,0.35)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.45)',
+  },
   ghost: { backgroundColor: 'transparent' },
   danger: { backgroundColor: colors.danger },
 });
