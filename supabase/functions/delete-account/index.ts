@@ -13,6 +13,7 @@
 // to also revoke the user's Sign in with Apple grant (see below).
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 import { readAppleConfig, revokeToken } from '../_shared/apple.ts';
+import { CORS_HEADERS, preflight } from '../_shared/cors.ts';
 
 async function removeAllUnderPrefix(adminClient: ReturnType<typeof createClient>, bucket: string, prefix: string) {
   const { data: files, error } = await adminClient.storage.from(bucket).list(prefix);
@@ -43,13 +44,16 @@ async function revokeAppleGrantIfAny(adminClient: ReturnType<typeof createClient
 }
 
 Deno.serve(async (req) => {
+  const pre = preflight(req);
+  if (pre) return pre;
+
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
   }
 
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Missing Authorization header' }), { status: 401, headers: CORS_HEADERS });
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
@@ -65,7 +69,7 @@ Deno.serve(async (req) => {
   } = await callerClient.auth.getUser();
 
   if (userError || !user) {
-    return new Response(JSON.stringify({ error: 'Not authenticated' }), { status: 401 });
+    return new Response(JSON.stringify({ error: 'Not authenticated' }), { status: 401, headers: CORS_HEADERS });
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
@@ -97,8 +101,8 @@ Deno.serve(async (req) => {
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
 
   if (deleteError) {
-    return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: deleteError.message }), { status: 500, headers: CORS_HEADERS });
   }
 
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' } });
 });

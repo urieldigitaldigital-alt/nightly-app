@@ -15,7 +15,20 @@
 // Deploy: supabase functions deploy login
 import { createClient } from 'jsr:@supabase/supabase-js@2';
 
-const JSON_HEADERS = { 'Content-Type': 'application/json' };
+/**
+ * El navegador manda un preflight OPTIONS antes de cualquier POST con
+ * cabeceras propias. Sin estas cabeceras la función responde 405 y el POST
+ * real nunca sale: el login con nombre de usuario funcionaba en iOS y
+ * Android —donde no hay CORS— y fallaba solo en web, con un mensaje de
+ * "usuario o contraseña incorrectos" que no tenía nada que ver.
+ */
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
+
+const JSON_HEADERS = { ...CORS_HEADERS, 'Content-Type': 'application/json' };
 
 // Un único mensaje para "no existe" y para "contraseña incorrecta". Si fueran
 // distintos, probar nombres de usuario alcanzaría para saber cuáles están
@@ -23,8 +36,12 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
 const INVALID_CREDENTIALS = 'Usuario o contraseña incorrectos.';
 
 Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: CORS_HEADERS });
+  }
+
   if (req.method !== 'POST') {
-    return new Response('Method not allowed', { status: 405 });
+    return new Response('Method not allowed', { status: 405, headers: CORS_HEADERS });
   }
 
   let body: { identifier?: string; password?: string };
