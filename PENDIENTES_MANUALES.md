@@ -95,7 +95,22 @@ npx supabase functions deploy login
 
 ---
 
-## 🟡 Sign in with Apple — falta solo la Key
+## ✅ Sign in with Apple — ACTIVO
+
+Verificado contra el servidor: `/auth/v1/authorize?provider=apple` pasó de
+`400 "provider is not enabled"` a **302 redirigiendo a appleid.apple.com**.
+
+En Supabase → Authentication → Providers → Apple quedó cargado:
+
+- **Client IDs**: `com.afterdune.app,com.afterdune.signin`
+- **Secret Key**: el JWT que genera `scripts/apple-client-secret.mjs`
+- **Toggle**: activado
+
+> ⏰ **Ese secret vence el 27/4/2027.** Cuando falten unas semanas, volvé a
+> correr el script con el mismo `.p8` y reemplazá el valor. Si se vence, el
+> login con Apple en web deja de andar.
+
+### Detalle de cómo se llegó acá
 
 Hecho en developer.apple.com (cuenta **Nara Bertini**, Team ID `26FHY23TDL`):
 
