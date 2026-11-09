@@ -13,8 +13,11 @@ export const palette = {
   white: '#FFFFFF',
   grayLight: '#A1A1AA',
   grayMuted: '#6B6B70',
-  accent: '#C8FF4D',
-  accentDim: '#9ED92F',
+  // Cian tomado del logo: el resplandor del borde, el mar y el trazo bajo
+  // "Afterdune". Reemplazó a un verde lima (#C8FF4D) que no salía de ningún
+  // lado de la identidad.
+  accent: '#22D3EE',
+  accentDim: '#0E9FB8',
   danger: '#FF5C5C',
   warning: '#FFB84D',
   success: '#4DD98C',

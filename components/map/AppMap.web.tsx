@@ -41,11 +41,11 @@ function makeEl(m: MapMarkerSpec): HTMLDivElement {
         : `<div style="width:100%;height:100%;background:#2a2a2a;border-radius:21px;"></div>`
     }${
       m.badge && m.badge > 1
-        ? `<div style="position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#ACFF2F;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;padding:0 4px;color:#111;">${m.badge}</div>`
+        ? `<div style="position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;border-radius:10px;background:#22D3EE;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:bold;border:2px solid white;padding:0 4px;color:#111;">${m.badge}</div>`
         : ''
     }</div>`;
   } else {
-    el.innerHTML = `<div style="width:16px;height:16px;border-radius:8px;background:${m.color || '#ACFF2F'};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.6);"></div>`;
+    el.innerHTML = `<div style="width:16px;height:16px;border-radius:8px;background:${m.color || '#22D3EE'};border:3px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.6);"></div>`;
   }
   el.style.cursor = 'pointer';
   return el;
@@ -217,7 +217,7 @@ export default function AppMapWeb({
           type: 'line',
           source: 'route',
           layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': routeColor || '#ACFF2F', 'line-width': 4 },
+          paint: { 'line-color': routeColor || '#22D3EE', 'line-width': 4 },
         });
       }
     };

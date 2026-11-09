@@ -205,7 +205,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
       'expo-notifications',
       {
         icon: './assets/icon.png',
-        color: '#C8FF4D',
+        color: '#22D3EE',
       },
     ],
   ],
