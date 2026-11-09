@@ -63,7 +63,22 @@ El filtro de contenido quedó probado contra la base real:
 
 ---
 
-## Edge Functions — una desplegada, dos esperando a Apple
+## ✅ Edge Functions — las tres desplegadas
+
+Verificado: `login`, `apple-link` y `delete-account` responden 401 (o sea
+existen y piden autorización), ninguna da 404.
+
+`delete-account` llevaba 18 días desplegada con la versión anterior, sin el
+código de revocación de Apple — se actualizó. Sin eso, `apple-link` guardaría
+refresh tokens que nadie usaría nunca.
+
+Secrets cargados en producción: `APPLE_TEAM_ID`, `APPLE_KEY_ID` y
+`APPLE_CLIENT_ID`. Falta `APPLE_PRIVATE_KEY` (el contenido del `.p8`), que se
+carga desde la máquina donde está el archivo:
+
+    npx supabase secrets set APPLE_PRIVATE_KEY="$(cat ~/Downloads/AuthKey_KFS3BLBPJM.p8)" --remote=hsuiitkeihiyaezixgop
+
+### Notas de cómo se desplegaron
 
 - [x] **`login`** — desplegada desde el editor del dashboard y probada contra
       producción (usuario inexistente → 401, falta contraseña → 400). El ingreso
