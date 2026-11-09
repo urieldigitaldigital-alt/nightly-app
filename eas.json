@@ -12,7 +12,6 @@
       "distribution": "internal"
     },
     "production": {
-      "_comentario": "Sin autoIncrement: EAS no lo soporta cuando la configuración es dinámica (app.config.ts), y falla el build antes de empezar. El buildNumber de iOS y el versionCode de Android se suben a mano en app.config.ts antes de cada envío.",
       "channel": "production",
       "ios": {
         "resourceClass": "m-medium"

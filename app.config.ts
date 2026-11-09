@@ -42,6 +42,12 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.afterdune.app',
+    // Subir a mano antes de cada envío a App Store Connect: Apple rechaza
+    // dos binarios con el mismo buildNumber para la misma versión.
+    //
+    // No se usa `autoIncrement` en eas.json porque EAS no lo soporta cuando
+    // la configuración es dinámica (este archivo es .ts): tendría que
+    // reescribirlo y no puede, y el build falla antes de empezar.
     buildNumber: '1',
     // Generates the Sign In with Apple entitlement at prebuild time —
     // required since the app offers Google sign-in (Apple Guideline 4.8).
