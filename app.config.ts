@@ -24,6 +24,21 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   userInterfaceStyle: 'dark',
   backgroundColor: '#080808',
   newArchEnabled: true,
+  // expo-updates: permite publicar arreglos de JavaScript sin pasar por una
+  // revisión nueva de Apple. EAS lo instaló al preparar el primer build y
+  // pide estas dos claves; como este archivo es un .ts dinámico, no puede
+  // escribirlas solo.
+  //
+  // `appVersion` ata cada actualización a la versión de la app (1.0.0): un
+  // binario nunca va a recibir JavaScript pensado para otra versión, que es
+  // justo la forma de romper una app en producción con una actualización
+  // por aire.
+  updates: {
+    url: 'https://u.expo.dev/d5a591ce-a0fb-4182-b0da-40d29174f972',
+  },
+  runtimeVersion: {
+    policy: 'appVersion',
+  },
   ios: {
     supportsTablet: true,
     bundleIdentifier: 'com.afterdune.app',
