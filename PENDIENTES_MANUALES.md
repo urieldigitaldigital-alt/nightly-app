@@ -6,37 +6,41 @@ Ordenado por lo que bloquea el envío primero.
 
 ---
 
-## 🔴 Bloqueante — compilar el binario
+## ✅ El binario compila — HECHO
 
-El código está listo, pero **el build nativo todavía no se compiló ni una vez**, y hasta que eso pase no hay binario para enviar.
+Primer build de producción terminado en EAS, con el `.ipa` firmado:
 
-En esta Mac no se pudo compilar localmente: CocoaPods necesita Ruby ≥ 3.3 y el Ruby del sistema es 2.6, cuyos headers Apple ya quitó de Xcode 27. Dos caminos:
+    https://expo.dev/accounts/uriel-ilsen/projects/afterdune/builds/1f6abeb1-ff78-42d7-8268-aea681affe3d
 
-**Opción A — build en la nube con EAS (recomendado, no toca tu Mac)**
+**El módulo nativo del mapa (MapLibre) compiló sin errores.** Era la única
+pieza que nunca se había probado: se reemplazó un WebView por un módulo nativo
+sin poder verificarlo localmente, porque CocoaPods no se puede instalar en esta
+Mac (Ruby 2.6).
 
-```bash
-npx eas login
-```
-```bash
-npx eas build --platform ios --profile production
-```
+Credenciales generadas y guardadas por EAS, no hace falta volver a crearlas:
 
-EAS compila en sus servidores, donde el toolchain ya está armado. Es también el camino para el que `eas.json` ya está configurado.
+- Certificado de distribución (vence 9/11/2027)
+- Perfil de aprovisionamiento `6Q8P6X66DM`
+- Push key de APNs — **generada por EAS**, por eso no había que crearla a mano
+  en developer.apple.com
 
-**Opción B — compilar local (si querés poder probar en el simulador)**
+### Cuatro cosas de configuración que frenaron el primer build
 
-Instalar un Ruby moderno con Homebrew y después CocoaPods:
+Todas de configuración, ninguna de código. Quedan anotadas porque vuelven a
+aparecer en cualquier proyecto con `app.config.ts`:
 
-```bash
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-```bash
-brew install ruby cocoapods && npx expo run:ios
-```
+1. `extra.eas.projectId` se leía de una variable de entorno que no existía.
+   Como la configuración es dinámica, EAS tampoco puede escribirla sola.
+2. `expo-updates` se instaló al vuelo y pidió `updates.url` y
+   `runtimeVersion` — mismo problema de configuración dinámica.
+3. `autoIncrement` en `eas.json` no es compatible con configuración dinámica.
+   El `buildNumber` se sube a mano.
+4. `eas.json` valida contra un esquema cerrado: no admite claves propias, ni
+   siquiera un comentario.
 
-> Avisame cuando tengas una de las dos andando y seguimos desde ahí: si el build tira algún error de compilación del módulo nativo del mapa, lo arreglo.
-
----
+> ⚠️ **Antes del próximo envío**: subir `ios.buildNumber` en `app.config.ts`
+> (hoy `'1'`). Apple rechaza dos binarios con el mismo número para la misma
+> versión.
 
 ## ✅ Migraciones de base de datos — HECHO
 
