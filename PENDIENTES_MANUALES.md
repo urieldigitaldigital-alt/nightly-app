@@ -72,11 +72,12 @@ existen y piden autorización), ninguna da 404.
 código de revocación de Apple — se actualizó. Sin eso, `apple-link` guardaría
 refresh tokens que nadie usaría nunca.
 
-Secrets cargados en producción: `APPLE_TEAM_ID`, `APPLE_KEY_ID` y
-`APPLE_CLIENT_ID`. Falta `APPLE_PRIVATE_KEY` (el contenido del `.p8`), que se
-carga desde la máquina donde está el archivo:
+Los cuatro secrets de Apple quedaron cargados en producción y verificados
+(`supabase secrets list` los muestra hasheados, que es lo correcto):
+`APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_CLIENT_ID` y `APPLE_PRIVATE_KEY`.
 
-    npx supabase secrets set APPLE_PRIVATE_KEY="$(cat ~/Downloads/AuthKey_KFS3BLBPJM.p8)" --remote=hsuiitkeihiyaezixgop
+**La revocación del permiso de Apple al eliminar la cuenta funciona de punta a
+punta.** Es el requisito de la Guideline 5.1.1(v).
 
 ### Notas de cómo se desplegaron
 
