@@ -191,7 +191,12 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   extra: {
     router: {},
     eas: {
-      projectId: process.env.EXPO_PUBLIC_EAS_PROJECT_ID,
+      // Fijo y no leído del entorno a propósito. Es el id del proyecto
+      // @uriel-ilsen/afterdune en EAS: identidad, no secreto. Leerlo de
+      // process.env hacía que el build fallara cuando la variable no estaba
+      // —y no estaba—, porque EAS no puede escribir este valor solo en una
+      // configuración dinámica como este archivo .ts.
+      projectId: 'd5a591ce-a0fb-4182-b0da-40d29174f972',
     },
   },
 };
