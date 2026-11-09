@@ -199,7 +199,10 @@ const styles = StyleSheet.create({
     zIndex: 999,
   },
   center: { alignItems: 'center', gap: 16 },
-  logo: { width: 120, height: 120 },
+  // El radio es el 22% del lado, que es la proporción que usa iOS para el
+  // ícono de app. Sin esto el logo cae cuadrado sobre los dos círculos que
+  // animan detrás y el conjunto se ve mal armado.
+  logo: { width: 120, height: 120, borderRadius: 26 },
   ring: {
     position: 'absolute',
     width: 140,

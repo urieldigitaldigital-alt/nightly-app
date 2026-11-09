@@ -1,7 +1,8 @@
 import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
-import { colors, radii, spacing, typography } from '@/constants/theme';
+import { accentGradient, colors, radii, shadows, spacing, typography } from '@/constants/theme';
 import { motion } from '@/constants/motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
@@ -81,6 +82,20 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
+      {/* El degradé va como capa de fondo y no como `backgroundColor` del
+          propio botón. Si se envolviera el botón en el degradé habría que
+          recortar con `overflow: 'hidden'`, y en iOS eso recorta también la
+          sombra, que es justo el resplandor que se busca acá. */}
+      {variant === 'primary' && !isDisabled ? (
+        <LinearGradient
+          colors={[...accentGradient]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradient}
+          pointerEvents="none"
+        />
+      ) : null}
+
       {loading ? (
         <ActivityIndicator color={variant === 'primary' ? colors.accentText : colors.textPrimary} />
       ) : (
@@ -115,6 +130,14 @@ const styles = StyleSheet.create({
   disabled: {
     opacity: 0.45,
   },
+  gradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: radii.pill,
+  },
 });
 
 const sizeStyles = StyleSheet.create({
@@ -123,7 +146,10 @@ const sizeStyles = StyleSheet.create({
 });
 
 const variantStyles = StyleSheet.create({
-  primary: { backgroundColor: colors.accent },
+  // El color sólido queda abajo del degradé: es lo que se ve cuando el botón
+  // está deshabilitado (ahí la capa del degradé no se dibuja) y en cualquier
+  // caso en que `expo-linear-gradient` tarde un frame en montar.
+  primary: { backgroundColor: colors.accent, ...shadows.glow },
   // Translúcido y con borde cian en vez de un gris sólido: en la pantalla de
   // bienvenida estos botones van encima del atardecer, y un bloque opaco
   // taparía la foto. Dentro de la app, sobre fondo negro, el resultado es

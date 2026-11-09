@@ -22,7 +22,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
   orientation: 'portrait',
   icon: './assets/icon.png',
   userInterfaceStyle: 'dark',
-  backgroundColor: '#080808',
+  backgroundColor: '#05070A',
   newArchEnabled: true,
   // expo-updates: permite publicar arreglos de JavaScript sin pasar por una
   // revisión nueva de Apple. EAS lo instaló al preparar el primer build y
@@ -134,9 +134,12 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     package: 'com.afterdune.app',
     versionCode: 1,
     adaptiveIcon: {
-      backgroundColor: '#080808',
+      backgroundColor: '#05070A',
       foregroundImage: './assets/android-icon-foreground.png',
-      backgroundImage: './assets/android-icon-background.png',
+      // Sin `backgroundImage`: el fondo es un color liso y `backgroundColor`
+      // ya lo resuelve. El PNG que había era del negro viejo (#080808) y
+      // tapaba al color de arriba, así que el ícono quedaba de un tono
+      // distinto al resto de la app.
       monochromeImage: './assets/android-icon-monochrome.png',
     },
     predictiveBackGestureEnabled: false,
@@ -162,8 +165,8 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
     name: 'Afterdune',
     shortName: 'Afterdune',
     display: 'standalone',
-    themeColor: '#080808',
-    backgroundColor: '#080808',
+    themeColor: '#05070A',
+    backgroundColor: '#05070A',
   },
   plugins: [
     './plugins/withTabletOrientations',
@@ -184,7 +187,7 @@ const config: ExpoConfig & { newArchEnabled?: boolean } = {
         image: './assets/splash-icon.png',
         imageWidth: 180,
         resizeMode: 'contain',
-        backgroundColor: '#080808',
+        backgroundColor: '#05070A',
       },
     ],
     'expo-image',

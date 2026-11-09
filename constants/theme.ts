@@ -4,23 +4,29 @@
  * `constants/brand.ts` so the identity can be swapped without touching screens.
  */
 
+// Los grises no son neutros: todos tiran apenas al azul. Sobre un fondo que
+// va a estar casi siempre debajo de fotos nocturnas y del mapa oscuro, un
+// gris neutro se ve sucio al lado del cian; estos lo acompañan.
 export const palette = {
-  black: '#080808',
-  blackSecondary: '#121212',
-  grayDark: '#1B1B1B',
-  grayMid: '#2A2A2E',
-  grayLine: '#262629',
+  black: '#05070A',
+  blackSecondary: '#0B1015',
+  grayDark: '#111922',
+  grayMid: '#18222E',
+  grayLine: 'rgba(255,255,255,0.06)',
   white: '#FFFFFF',
-  grayLight: '#A1A1AA',
-  grayMuted: '#6B6B70',
+  grayLight: '#A3B1C2',
+  grayMuted: '#64748B',
   // Cian tomado del logo: el resplandor del borde, el mar y el trazo bajo
   // "Afterdune". Reemplazó a un verde lima (#C8FF4D) que no salía de ningún
   // lado de la identidad.
   accent: '#22D3EE',
   accentDim: '#0E9FB8',
-  danger: '#FF5C5C',
-  warning: '#FFB84D',
-  success: '#4DD98C',
+  // El azul del final del degradé del swoosh del logo. El acento nunca va
+  // plano en superficies grandes: va de cian a este azul.
+  accentDeep: '#0EA5E9',
+  danger: '#F87171',
+  warning: '#FBBF24',
+  success: '#34D399',
 } as const;
 
 export const colors = {
@@ -29,17 +35,27 @@ export const colors = {
   surfaceAlt: palette.grayDark,
   surfaceRaised: palette.grayMid,
   border: palette.grayLine,
+  // Solo para lo seleccionado o enfocado. Un borde cian en todas las cards
+  // haría que nada se destaque.
+  borderStrong: 'rgba(34,211,238,0.35)',
   white: palette.white,
   textPrimary: palette.white,
   textSecondary: palette.grayLight,
   textMuted: palette.grayMuted,
   accent: palette.accent,
-  accentText: palette.black,
+  accentDeep: palette.accentDeep,
+  accentSoft: 'rgba(34,211,238,0.12)',
+  // Casi negro con un resto de azul, no negro puro: sobre el cian saturado
+  // el negro puro vibra.
+  accentText: '#031016',
   danger: palette.danger,
   warning: palette.warning,
   success: palette.success,
-  overlay: 'rgba(8,8,8,0.72)',
+  overlay: 'rgba(5,7,10,0.72)',
 } as const;
+
+/** Degradé del acento, en el orden que esperan `expo-linear-gradient` y SVG. */
+export const accentGradient = [palette.accent, palette.accentDeep] as const;
 
 export const spacing = {
   xxs: 4,
@@ -52,12 +68,38 @@ export const spacing = {
   xxxl: 40,
 } as const;
 
+// Más redondeado que antes en toda la escala. Es lo que separa visualmente a
+// una app nativa reciente de una de hace cinco años, y lo que hace que las
+// cards lean como objetos y no como recuadros.
 export const radii = {
-  sm: 8,
-  md: 14,
-  lg: 20,
-  xl: 28,
+  sm: 12,
+  md: 18,
+  lg: 24,
+  xl: 32,
   pill: 999,
+} as const;
+
+/**
+ * Sombra de card. En iOS tiñe de negro profundo; en Android `elevation` no
+ * acepta color, así que ahí la sombra la da el sistema y estas props se
+ * ignoran solas.
+ */
+export const shadows = {
+  card: {
+    shadowColor: '#000000',
+    shadowOpacity: 0.45,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  /** Resplandor cian. Reservado: botón principal, tab activo, marcador elegido. */
+  glow: {
+    shadowColor: palette.accent,
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 10,
+  },
 } as const;
 
 export const typography = {
