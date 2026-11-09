@@ -82,7 +82,10 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radii.pill,
   },
-  chipActive: { backgroundColor: colors.accent, ...shadows.glow },
+  // Sin resplandor: en una fila de seis chips, el que está activo ya se
+  // distingue por ser el único con fondo sólido. Agregarle brillo encima
+  // sumaba luz sin sumar información.
+  chipActive: { backgroundColor: colors.accent },
   chipIdle: {
     backgroundColor: colors.surface,
     borderWidth: 1,

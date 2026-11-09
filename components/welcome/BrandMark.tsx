@@ -63,10 +63,10 @@ const styles = StyleSheet.create({
     // así que ahí se pierde: el borde de arriba es lo que mantiene la marca
     // reconocible en las dos plataformas.
     shadowColor: '#22D3EE',
-    shadowOpacity: 0.75,
-    shadowRadius: 22,
+    shadowOpacity: 0.32,
+    shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
+    elevation: 6,
   },
   logo: { width: '100%', height: '100%' },
 });

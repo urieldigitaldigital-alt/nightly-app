@@ -7,11 +7,16 @@
 // Los grises no son neutros: todos tiran apenas al azul. Sobre un fondo que
 // va a estar casi siempre debajo de fotos nocturnas y del mapa oscuro, un
 // gris neutro se ve sucio al lado del cian; estos lo acompañan.
+// Los fondos subieron desde un casi negro (#05070A) a este carbón. El negro
+// puro contra el cian saturado daba el contraste más alto posible, y eso es
+// justo lo que hacía que el azul "saltara" y que todo se leyera como neón.
+// Con los grises un poco más claros el mismo cian se apoya en vez de vibrar,
+// y la pantalla deja de parecer una consola de ciencia ficción.
 export const palette = {
-  black: '#05070A',
-  blackSecondary: '#0B1015',
-  grayDark: '#111922',
-  grayMid: '#18222E',
+  black: '#0C1116',
+  blackSecondary: '#141B23',
+  grayDark: '#1B242E',
+  grayMid: '#24303C',
   grayLine: 'rgba(255,255,255,0.06)',
   white: '#FFFFFF',
   grayLight: '#A3B1C2',
@@ -92,13 +97,21 @@ export const shadows = {
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
-  /** Resplandor cian. Reservado: botón principal, tab activo, marcador elegido. */
+  /**
+   * Resplandor cian, apenas insinuado.
+   *
+   * Estuvo en 0.45 de opacidad y 20 de radio, y era demasiado: con el botón
+   * principal, los chips activos y el botón del medio de la barra brillando
+   * todos a la vez, la pantalla se leía como un tablero de neón y el cian
+   * dejaba de señalar nada porque estaba en todos lados. Ahora el acento se
+   * distingue por ser el único color saturado sobre gris, no por brillar.
+   */
   glow: {
     shadowColor: palette.accent,
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
   },
 } as const;
 

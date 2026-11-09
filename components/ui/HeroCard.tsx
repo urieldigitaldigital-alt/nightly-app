@@ -72,6 +72,13 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     padding: spacing.lg,
     overflow: 'hidden',
+    // El cian sólido debajo del degradé. Todo lo que va adentro de esta card
+    // está pensado como "oscuro sobre cian": el titular, el número y las
+    // etiquetas de los accesos son casi negros. Si el degradé no llega a
+    // pintar, el fondo queda transparente, ese texto oscuro cae sobre el
+    // fondo oscuro de la app y la card entera se vuelve ilegible —se ve
+    // gris, como si los botones estuvieran desactivados.
+    backgroundColor: colors.accent,
     ...shadows.card,
   },
   bloom: {

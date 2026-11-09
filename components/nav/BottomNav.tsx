@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     borderRadius: radii.xl,
-    backgroundColor: 'rgba(11,16,21,0.82)',
+    backgroundColor: 'rgba(20,27,35,0.86)',
   },
   tab: {
     flex: 1,

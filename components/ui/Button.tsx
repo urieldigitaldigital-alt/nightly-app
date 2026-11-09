@@ -149,7 +149,7 @@ const variantStyles = StyleSheet.create({
   // El color sólido queda abajo del degradé: es lo que se ve cuando el botón
   // está deshabilitado (ahí la capa del degradé no se dibuja) y en cualquier
   // caso en que `expo-linear-gradient` tarde un frame en montar.
-  primary: { backgroundColor: colors.accent, ...shadows.glow },
+  primary: { backgroundColor: colors.accent },
   // Translúcido y con borde cian en vez de un gris sólido: en la pantalla de
   // bienvenida estos botones van encima del atardecer, y un bloque opaco
   // taparía la foto. Dentro de la app, sobre fondo negro, el resultado es

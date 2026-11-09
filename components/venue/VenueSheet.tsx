@@ -123,7 +123,7 @@ export function VenueSheet({ venue, onClose }: Props) {
 
 const styles = StyleSheet.create({
   root: {
-    backgroundColor: 'rgba(11,16,21,0.96)',
+    backgroundColor: 'rgba(20,27,35,0.96)',
     borderRadius: radii.xl,
     borderWidth: 1,
     borderColor: colors.border,
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     lineHeight: 19,
   },
   actions: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xxs },
-  primaryAction: { flex: 1, height: 48, borderRadius: radii.pill, ...shadows.glow },
+  primaryAction: { flex: 1, height: 48, borderRadius: radii.pill },
   primaryFill: {
     flex: 1,
     flexDirection: 'row',
