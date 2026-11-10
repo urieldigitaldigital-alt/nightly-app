@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, StyleSheet, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { colors } from '@/constants/theme';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
@@ -40,7 +39,7 @@ export function BrandMark() {
       {/* El logo real de la marca. Ya trae el nombre adentro, así que acá no
           se repite debajo: duplicarlo se vería como un error de armado. */}
       <Animated.View style={[styles.iconWrap, iconStyle]}>
-        <Image source={require('../../assets/logo-afterdune.png')} style={styles.logo} contentFit="cover" />
+        <Image source={require('../../assets/logo-afterdune.png')} style={styles.logo} resizeMode="cover" />
       </Animated.View>
 
     </View>

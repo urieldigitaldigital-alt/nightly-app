@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { Image } from 'expo-image';
+import { Image, StyleSheet, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
@@ -48,15 +47,19 @@ export function WelcomeBackground() {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
       <Animated.View style={[StyleSheet.absoluteFill, photoStyle]}>
+        {/* `Image` de React Native y no de expo-image. En la compilacion de
+            produccion para web, expo-image dejaba su contenedor en cero de
+            alto: la foto se descargaba (200) y quedaba con opacidad 1, pero
+            el envoltorio la recortaba y no se veia nada. Para un archivo
+            local y estatico, expo-image no aportaba nada que justificara el
+            riesgo: no hay cache de red que ganar ni transicion que hacer. */}
         <Image
           source={require('../../assets/welcome-bg.png')}
           style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          // La foto está encuadrada con el sol en el centro: anclarla ahí
-          // mantiene el horizonte a la misma altura en un iPhone SE y en un
-          // iPad, en vez de recortar por arriba o por abajo.
-          contentPosition="center"
-          transition={0}
+          // La foto esta encuadrada con el sol en el centro: `cover` mantiene
+          // el horizonte a la misma altura en un iPhone SE y en un iPad, en
+          // vez de recortar por arriba o por abajo.
+          resizeMode="cover"
         />
       </Animated.View>
 
