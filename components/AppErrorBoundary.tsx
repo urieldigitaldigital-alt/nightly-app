@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +26,8 @@ export type AppErrorBoundaryProps = {
 };
 
 export function AppErrorBoundary({ error, retry }: AppErrorBoundaryProps) {
+  const [showDetail, setShowDetail] = useState(false);
+
   return (
     <SafeAreaView style={styles.root}>
       <ScrollView contentContainerStyle={styles.content}>
@@ -43,13 +46,35 @@ export function AppErrorBoundary({ error, retry }: AppErrorBoundaryProps) {
 
         <Text style={styles.support}>{brand.supportEmail}</Text>
 
-        {/* El detalle técnico solo en desarrollo: en producción no le dice
-            nada útil a la persona y puede filtrar información interna. */}
-        {__DEV__ && (
+        {/* El detalle no se muestra de entrada: a quien usa la app no le
+            dice nada y ocupa la pantalla. Pero esconderlo del todo en
+            produccion dejaba a los crashes sin forma de diagnosticarse
+            —habia que pedirle a la persona que abriera la consola del
+            navegador—, asi que ahora esta a un toque de distancia.
+
+            El stack sigue siendo exclusivo de desarrollo: ahi si aparecen
+            rutas internas y nombres de funciones que no tienen por que
+            salir de la maquina de quien programa. */}
+        <Pressable
+          onPress={() => setShowDetail((v) => !v)}
+          accessibilityRole="button"
+          accessibilityLabel={showDetail ? 'Ocultar el detalle tecnico' : 'Ver el detalle tecnico'}
+          hitSlop={8}
+        >
+          <Text style={styles.detailToggle}>{showDetail ? 'Ocultar detalle' : 'Ver detalle tecnico'}</Text>
+        </Pressable>
+
+        {showDetail && (
           <View style={styles.debugBox}>
-            <Text style={styles.debugTitle}>Detalle (solo en desarrollo)</Text>
-            <Text style={styles.debugText}>{error.message}</Text>
-            {error.stack ? <Text style={styles.debugStack}>{error.stack}</Text> : null}
+            <Text style={styles.debugTitle}>Detalle</Text>
+            <Text selectable style={styles.debugText}>
+              {error.message || 'Sin mensaje'}
+            </Text>
+            {__DEV__ && error.stack ? (
+              <Text selectable style={styles.debugStack}>
+                {error.stack}
+              </Text>
+            ) : null}
           </View>
         )}
 
@@ -98,5 +123,11 @@ const styles = StyleSheet.create({
   debugTitle: { color: colors.warning, fontSize: typography.size.xs, fontWeight: typography.weight.semibold },
   debugText: { color: colors.textPrimary, fontSize: typography.size.sm },
   debugStack: { color: colors.textMuted, fontSize: 10, lineHeight: 14 },
+  detailToggle: {
+    color: colors.textMuted,
+    fontSize: typography.size.xs,
+    textDecorationLine: 'underline',
+    marginTop: spacing.md,
+  },
   version: { color: colors.textMuted, fontSize: typography.size.xs, marginTop: spacing.xl },
 });

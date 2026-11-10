@@ -6,6 +6,15 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["expo", "start", "--web"],
       "port": 8081
+    },
+    {
+      "name": "apex-web",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Users/urielbarboza/app motivacional' && npx expo start --web --port 8082"
+      ],
+      "port": 8082
     }
   ]
 }
