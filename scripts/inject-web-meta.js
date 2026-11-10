@@ -33,7 +33,7 @@ const splashLinks = IOS_SPLASH_SCREENS.map(
 
 const tags = `
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#080808" />
+    <meta name="theme-color" content="#0C1116" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -55,7 +55,7 @@ ${splashLinks}
          scrolling independently, with native momentum via the global
          -webkit-overflow-scrolling: touch below. */
       html, body {
-        background-color: #080808;
+        background-color: #0C1116;
         overscroll-behavior: none;
         height: 100dvh;
       }
