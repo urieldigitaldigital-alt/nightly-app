@@ -112,5 +112,41 @@ export const UBER_MAP_STYLE = {
       },
       paint: { 'text-color': '#e7ebf2', 'text-halo-color': '#0e1521', 'text-halo-width': 1.2 },
     },
+    {
+      // Comercios y puntos de interes: kioscos, bares, restaurantes,
+      // farmacias, paradas. Sin esta capa el mapa mostraba solo calles y
+      // nombres de barrio, y no servia para ubicarse caminando: a nivel de
+      // calle uno se orienta por los negocios de la esquina, no por el
+      // nombre del barrio.
+      id: 'poi-label',
+      type: 'symbol',
+      source: 'openmaptiles',
+      'source-layer': 'poi',
+      // Desde zoom 15 para abajo no se dibuja nada. Mas lejos que eso, los
+      // nombres se amontonan hasta tapar el mapa y los marcadores de las
+      // fiestas y los boliches, que son lo que de verdad importa aca.
+      minzoom: 15,
+      // `rank` lo trae OpenMapTiles ya ordenado por relevancia dentro de
+      // cada celda: quedarse con los primeros evita que una galeria con
+      // treinta locales sepulte la zona.
+      filter: ['all', ['has', 'name'], ['<=', ['get', 'rank'], 12]],
+      layout: {
+        'text-field': ['get', 'name'],
+        'text-font': ['Noto Sans Regular'],
+        'text-size': ['interpolate', ['linear'], ['zoom'], 15, 10, 18, 13],
+        'text-anchor': 'top',
+        'text-offset': [0, 0.5],
+        'text-max-width': 9,
+        // Si no entra sin pisar a otro, se omite. Un nombre a medias o
+        // encimado se lee peor que no tenerlo.
+        'text-optional': true,
+      },
+      paint: {
+        // Mas apagado que los nombres de barrio: son contexto, no destino.
+        'text-color': '#9bb0c4',
+        'text-halo-color': '#0e1521',
+        'text-halo-width': 1.2,
+      },
+    },
   ],
 };
