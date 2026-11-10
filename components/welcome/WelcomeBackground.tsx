@@ -55,7 +55,12 @@ export function WelcomeBackground() {
             riesgo: no hay cache de red que ganar ni transicion que hacer. */}
         <Image
           source={require('../../assets/welcome-bg.png')}
-          style={StyleSheet.absoluteFill}
+          // Ancho y alto al 100% y no `absoluteFill`. Con el posicionamiento
+          // absoluto suelto, en web la imagen se dibujaba a su tamano nativo
+          // (738x1600) recortada contra la esquina, y se veia una palmera en
+          // primer plano en lugar del atardecer entero. Con medidas
+          // explicitas, `cover` tiene contra que calcular el encuadre.
+          style={styles.photo}
           // La foto esta encuadrada con el sol en el centro: `cover` mantiene
           // el horizonte a la misma altura en un iPhone SE y en un iPad, en
           // vez de recortar por arriba o por abajo.
@@ -77,5 +82,6 @@ export function WelcomeBackground() {
 }
 
 const styles = StyleSheet.create({
+  photo: { width: '100%', height: '100%' },
   tint: { backgroundColor: 'rgba(34,211,238,0.07)' },
 });
