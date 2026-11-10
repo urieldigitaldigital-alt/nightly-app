@@ -29,10 +29,10 @@ export function AppleSignInButton({ onPress, loading = false }: Props) {
   return (
     <Button
       label="Continuar con Apple"
-      variant="secondary"
+      variant="light"
       onPress={onPress}
       loading={loading}
-      icon={<Ionicons name="logo-apple" size={18} color={colors.textPrimary} />}
+      icon={<Ionicons name="logo-apple" size={18} color="#1F2328" />}
     />
   );
 }

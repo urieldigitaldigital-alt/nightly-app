@@ -120,10 +120,10 @@ export default function WelcomeScreen() {
         {googleError ? <Text style={styles.googleError}>{googleError}</Text> : null}
         <Button
           label="Continuar con Google"
-          variant="secondary"
+          variant="light"
           onPress={handleGoogle}
           loading={googleLoading}
-          icon={<Ionicons name="logo-google" size={18} color={colors.textPrimary} />}
+          icon={<Ionicons name="logo-google" size={18} color="#1F2328" />}
         />
         <AppleSignInButton onPress={handleApple} loading={appleLoading} />
         <View style={styles.divider}>

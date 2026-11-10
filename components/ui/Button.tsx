@@ -5,7 +5,7 @@ import { colors, radii, spacing, typography } from '@/constants/theme';
 import { motion } from '@/constants/motion';
 import { useReducedMotion } from '@/hooks/useReducedMotion';
 
-type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+type Variant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'light';
 type Size = 'md' | 'lg';
 
 type Props = {
@@ -82,7 +82,7 @@ export function Button({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? colors.accentText : colors.textPrimary} />
+        <ActivityIndicator color={variant === 'primary' || variant === 'light' ? colors.accentText : colors.textPrimary} />
       ) : (
         <View style={styles.content}>
           {icon}
@@ -123,17 +123,10 @@ const sizeStyles = StyleSheet.create({
 });
 
 const variantStyles = StyleSheet.create({
-  // El color sólido queda abajo del degradé: es lo que se ve cuando el botón
-  // está deshabilitado (ahí la capa del degradé no se dibuja) y en cualquier
-  // caso en que `expo-linear-gradient` tarde un frame en montar.
   primary: { backgroundColor: colors.accent },
-  // Translúcido y con borde cian en vez de un gris sólido: en la pantalla de
-  // bienvenida estos botones van encima del atardecer, y un bloque opaco
-  // taparía la foto. Dentro de la app, sobre fondo negro, el resultado es
-  // prácticamente el mismo gris de antes.
-  // Bordes blancos translúcidos, no cian. Sobre la foto de la bienvenida, un
-  // contorno de color en cada botón se leía como neón; en blanco al 30% los
-  // botones se apoyan sobre la imagen sin disputarle la atención al logo.
+  // Translucido, con borde blanco y no cian: en la bienvenida estos botones
+  // van encima del atardecer, un bloque opaco taparia la foto y un contorno
+  // de color se leia como neon.
   secondary: {
     backgroundColor: 'rgba(10,16,22,0.55)',
     borderWidth: 1,
@@ -146,6 +139,11 @@ const variantStyles = StyleSheet.create({
   },
   ghost: { backgroundColor: 'transparent' },
   danger: { backgroundColor: colors.danger },
+  // Blanco solido con texto oscuro. Es el formato que piden tanto Google
+  // como Apple para sus botones de inicio de sesion sobre fondos oscuros, y
+  // ademas los despega de la foto de la bienvenida, donde un boton
+  // translucido se perdia contra el atardecer.
+  light: { backgroundColor: '#FFFFFF' },
 });
 
 const labelVariantStyles = StyleSheet.create({
@@ -154,4 +152,5 @@ const labelVariantStyles = StyleSheet.create({
   outline: { color: colors.textPrimary },
   ghost: { color: colors.textSecondary },
   danger: { color: colors.white },
+  light: { color: '#1F2328' },
 });
